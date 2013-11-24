@@ -41,26 +41,24 @@ int main(){
             handleDBErr(connection);
             cout << endl;
         }
-        else {cout << "connect to table failed";}
- 
+
+
 
 
         MYSQL_RES *result = mysql_store_result(connection);
-        
+
         if(result != NULL){
             //Get the number of columns
             int num_fields = mysql_num_fields(result);
-            
-cout << num_fields << endl;
 
             //Get all the rows
             MYSQL_ROW row;
             int i = 0;
             while((row = mysql_fetch_row(result))){
                 if(num_fields == 2){
-//                    char pet_number = row[0];
-//                    string pet_name = row[1];
-                    cout << "Added: " << row[1] << endl;
+                    char* pet_number = row[0];
+                    string pet_name = row[1];
+                    cout << "Added: " << pet_number << pet_name << endl;
                     i++;
                 }else{
                     cout << "MySQL: Wrong number of columns." << endl;
