@@ -1,63 +1,121 @@
-/* Standard C++ includes */
-#include <stdlib.h>
+#include <cstdlib>
+#include <cstdio>
+#include <ctime>
+#include <fstream>
 #include <iostream>
-
-/*
-  Include directly the different
-  headers from cppconn/ and mysql_driver.h + mysql_util.h
-  (and mysql_connection.h). This will reduce your build time!
-*/
-#include "mysql_connection.h"
-
-#include <cppconn/driver.h>
-#include <cppconn/exception.h>
-#include <cppconn/resultset.h>
-#include <cppconn/statement.h>
+#include <mysql.h>
+#include <pthread.h>
+#include <string>
+#include <unistd.h>
+#include <sstream>
+#include <vector>
 
 using namespace std;
 
-int main(void)
-{
-cout << endl;
-cout << "Running 'SELECT 'Hello World!' È
-   AS _message'..." << endl;
+//********Variable Definitions****************************************
 
-try {
-  sql::Driver *driver;
-  sql::Connection *con;
-  sql::Statement *stmt;
-  sql::ResultSet *res;
 
-  /* Create a connection */
-  driver = get_driver_instance();
-  con = driver->connect("tcp://127.0.0.1:3306", "root", "root");
-  /* Connect to the MySQL test database */
-  con->setSchema("test");
+#define SERVER "localhost"
+#define USER "root"
+#define PASSWORD "raspberry"
+#define DATABASE "rpmd"
 
-  stmt = con->createStatement();
-  res = stmt->executeQuery("SELECT 'Hello World!' AS _message");
-  while (res->next()) {
-    cout << "\t... MySQL replies: ";
-    /* Access column data by alias or column name */
-    cout << res->getString("_message") << endl;
-    cout << "\t... MySQL says it again: ";
-    /* Access column fata by numeric offset, 1 is the first column */
-    cout << res->getString(1) << endl;
-  }
-  delete res;
-  delete stmt;
-  delete con;
+/*
+ a MYSQL pointer to a MYSQL connection
+ */
+MYSQL *connection;
 
-} catch (sql::SQLException &e) {
-  cout << "# ERR: SQLException in " << __FILE__;
-  cout << "(" << __FUNCTION__ << ") on line " È
-     << __LINE__ << endl;
-  cout << "# ERR: " << e.what();
-  cout << " (MySQL error code: " << e.getErrorCode();
-  cout << ", SQLState: " << e.getSQLState() << " )" << endl;
+void connectToDatabase();
+void disconnectFromDatabase();
+void handleDBErr(MYSQL *con);
+
+int main(){
+
+
+    connectToDatabase();
+
+    if(connection != NULL){
+        //Retrieve all data
+        if(mysql_query(connection, "SELECT * FROM pet_names")){
+            cout <<"NAMES :: ";
+            handleDBErr(connection);
+            cout << endl;
+        }
+
+
+
+        MYSQL_RES *result = mysql_store_result(connection);
+        
+        if(result != NULL){
+            //Get the number of columns
+            int num_fields = mysql_num_fields(result);
+            
+            //Get all the rows
+            MYSQL_ROW row;
+            int i = 0;
+            while((row = mysql_fetch_row(result))){
+                if(num_fields == 2){
+                    tinyint pet_number = row[0]
+                    string pet_name = row[1];
+                    //cout << "Added: " << pet_name << endl;
+                    i++;
+                }else{
+                    cout << "MySQL: Wrong number of columns." << endl;
+                }
+            }
+            
+            mysql_free_result(result);
+            
+
+            }
+
+   }
+
+
+    disconnectFromDatabase();
+    return 0;
 }
 
-cout << endl;
 
-return EXIT_SUCCESS;
-}
+/**
+ * Connect to the MySQL Database identified by the constants SERVER, USER, 
+ * PASSWORD, DATABASE.
+ */
+void connectToDatabase(){
+    //initialize MYSQL object for connections
+    connection = mysql_init(NULL);
+    
+    if(connection == NULL){
+        fprintf(stderr, "%s\n", mysql_error(connection));
+        return;
+    }
+    
+    //Connect to the database
+    if(mysql_real_connect(connection, SERVER, USER, PASSWORD,
+            DATABASE, 0, NULL, 0) == NULL){
+        handleDBErr(connection);
+    }else{
+        printf("Database connection successful.\n");
+    }
+}//================================
+
+/**
+ * Disconnect from the MySQL Database identified by the constants SERVER, USER,
+ * PASSWORD, DATABASE
+ */
+void disconnectFromDatabase(){
+    mysql_close(connection);
+    cout << "Disconnected from database." << endl;
+}//=========================================
+
+/**
+ * Handle database errors. This function will print the error to the screen, 
+ * close the connection to the database, and exit the program with an error.
+ * @param con a MYSQL pointer to the connection object
+ */
+void handleDBErr(MYSQL *con){ 
+    fprintf(stderr, "%s\n", mysql_error(con));
+    //mysql_close(con);
+    //exit(1);
+}//=========================================
+
