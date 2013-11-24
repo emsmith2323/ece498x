@@ -27,7 +27,7 @@ printf ("initialized\n");
 
 
 
-int a=104;
+int a=105;
 serialPutchar (dev, a);
 
 printf ("char sent\n");
