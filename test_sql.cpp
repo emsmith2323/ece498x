@@ -32,6 +32,17 @@ void handleDBErr(MYSQL *con);
 int main(){
 
 
+// const string DAY[]={"Sun","Mon","Tue",
+//    "Wed","Thu","Fri","Sat"};
+
+        time_t rawtime;
+        tm * timeinfo;
+        time(&rawtime);
+        timeinfo=localtime(&rawtime);
+    int wday=timeinfo->tm_wday; //Day of week Sun=0,Sat=7
+
+
+
     connectToDatabase();
 
     if(connection != NULL){
