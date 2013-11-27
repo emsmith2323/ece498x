@@ -7,7 +7,7 @@
 class UserParam{
 
 private:
-	int paramType; //0=schedule change, 1=email
+	char* paramType; //0=schedule change, 1=email
 	std::string userValue;
 
 public:
