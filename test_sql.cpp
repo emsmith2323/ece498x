@@ -28,15 +28,17 @@ vector<UserParam> userParams;
  
 MYSQL *connection;
 
-//Function Declaractions
+//Function Declarations
 
 vector<UserParam> getUserParams();
 void connectToDatabase();
 void disconnectFromDatabase();
 void handleDBErr(MYSQL *con);
+void sendEmail(int emailType);
 
 int main(){
 
+  //Populate User Parameters vector with database values
   userParams = getUserParams();
 
 
@@ -57,23 +59,55 @@ for (unsigned i=0; i<userParams.size(); i++)
   cout << "COL2: " <<  userParams[i].userValue << endl ;
 }
 
-
-//"echo \"this is the message body\" | mail -s \"subject\" eric1313@gmail.com"
-
-
-string msgEmail = userParams[1].userValue;
-string msgPart1 = "echo \"this is the message body\" | mail -s \"subject\" "+msgEmail; 
-string message1 = msgPart1;
-char * cmessage1 = new char [message1.length()+1];
-std::strcpy (cmessage1, message1.c_str());
-
-//send email
-  system (cmessage1);
+ sendEmail(0);
 
   return 0;
 }
 
 //===============================
+
+void sendEmail(int emailType){
+
+ //Review user parameters to find email address
+ for (unsigned i=0; i<userParams.size(); i++)
+ { 
+    if(userParams[i].paramType==1)
+    {
+	//Set email address based on sql value
+	string msgEmail = userParams[i].userValue;
+    }
+ }
+
+//Create variables for each email message type
+
+string msgPart0 = "echo \"Pill delivered\" | mail -s \"RPMD Status\" "+msgEmail; 
+char * message0 = new char [msgPart0.length()+1]; //allocate message var
+std::strcpy (message0, msgPart0.c_str()); //populate message var
+
+string msgPart1 = "echo \"Pet did not come when called\" | mail -s \"RPMD Status\" "+msgEmail; 
+char * message1 = new char [msgPart1.length()+1];
+std::strcpy (message1, msgPart1.c_str());
+
+string msgPart2 = "echo \"No pill to deliver\" | mail -s \"RPMD Status\" "+msgEmail; 
+char * message2 = new char [msgPart2.length()+1];
+std::strcpy (message2, msgPart2.c_str());
+
+string msgPart3 = "echo \"Pet did not eat pill\" | mail -s \"RPMD Status\" "+msgEmail; 
+char * message3 = new char [msgPart3.length()+1];
+std::strcpy (message3, msgPart3.c_str());
+
+
+//send appropriate email
+  if (system(NULL)) //a command processor is available
+  { 
+	if (emailType==0){system (message0);}
+	if (emailType==1){system (message1);}
+	if (emailType==2){system (message2);}
+	if (emailType==3){system (message3);}
+  }
+
+}
+//===================================
 
 vector<UserParam> getUserParams(){
   vector<UserParam> params; //vector for user parameters
@@ -83,7 +117,7 @@ vector<UserParam> getUserParams(){
     if(connection != NULL){
         //Retrieve all data
         if(mysql_query(connection, "SELECT * FROM user_params")){
-            cout <<"PARAMSS :: ";
+            cout <<"PARAMS :: ";
             handleDBErr(connection);
             cout << endl;
         }
@@ -113,24 +147,21 @@ vector<UserParam> getUserParams(){
             
             mysql_free_result(result);
             
-
             }
-
    }
 
 
     disconnectFromDatabase();
+
 return params;
 }
 //============================
 
 
-/**
- * Connect to the MySQL Database identified by the constants SERVER, USER, 
- * PASSWORD, DATABASE.
- */
+//Connect to MySQL Database identified by constants SERVER, USER, PASSWORD, DATABASE
+
 void connectToDatabase(){
-    //initialize MYSQL object for connections
+    //initialize MYSQL object for connection
     connection = mysql_init(NULL);
     
     if(connection == NULL){
@@ -147,10 +178,9 @@ void connectToDatabase(){
     }
 }//================================
 
-/**
- * Disconnect from the MySQL Database identified by the constants SERVER, USER,
- * PASSWORD, DATABASE
- */
+
+//Disconnect from Database
+
 void disconnectFromDatabase(){
     mysql_close(connection);
     cout << "Disconnected from database." << endl;
