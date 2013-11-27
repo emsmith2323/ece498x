@@ -5,6 +5,7 @@
 #include <iostream>
 #include <mysql.h>
 #include <pthread.h>
+#include <cstring>
 #include <string>
 #include <unistd.h>
 #include <sstream>
@@ -39,18 +40,40 @@ int main(){
   userParams = getUserParams();
 
 
+//Get Day of Week
 // const string DAY[]={"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
-
         time_t rawtime;
         tm * timeinfo;
         time(&rawtime);
         timeinfo=localtime(&rawtime);
     int wday=timeinfo->tm_wday; //Day of week Sun=0,Sat=7
 
-cout << endl << userParams[0].paramType << userParams[0].userValue ;
+//Print user parameters
+for (unsigned i=0; i<userParams.size(); i++)
+{
+  cout << endl << wday ;
+  cout << endl << "ROW" << i << "::";
+  cout << "COL1: " << userParams[i].paramType << " ";
+  cout << "COL2: " <<  userParams[i].userValue << endl ;
+}
+
+
+//"echo \"this is the message body\" | mail -s \"subject\" eric1313@gmail.com"
+
+
+string msgEmail = userParams[1].userValue;
+string msgPart1 = "echo \"this is the message body\" | mail -s \"subject\" "+msgEmail; 
+string message1 = msgPart1;
+char * cmessage1 = new char [message1.length()+1];
+std::strcpy (cmessage1, message1.c_str());
+
+//send email
+  system (cmessage1);
 
   return 0;
 }
+
+//===============================
 
 vector<UserParam> getUserParams(){
   vector<UserParam> params; //vector for user parameters
@@ -60,7 +83,7 @@ vector<UserParam> getUserParams(){
     if(connection != NULL){
         //Retrieve all data
         if(mysql_query(connection, "SELECT * FROM user_params")){
-            cout <<"NAMES :: ";
+            cout <<"PARAMSS :: ";
             handleDBErr(connection);
             cout << endl;
         }

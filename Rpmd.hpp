@@ -6,15 +6,23 @@
 
 class UserParam{
 
-private:
+//private:
+public:
 	char* paramType; //0=schedule change, 1=email
 	std::string userValue;
 
-public:
+//public:
 	UserParam(); //default constructor 
-	UserParam(int nParamType, std::string nUserValue);
+	UserParam(char* nParamType, std::string nUserValue)
+        {paramType=nParamType; userValue=nUserValue;}
+        std::string toString();
 
 };
+
+//void UserParam::setParam (char* nParamType, std::string nUserValue){
+// paramType = nParamType;
+// userValue = nUserValue;
+//}
 
 //class Schedule{
 //    
