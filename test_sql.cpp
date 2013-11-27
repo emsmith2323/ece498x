@@ -10,30 +10,36 @@
 #include <sstream>
 #include <vector>
 
+#include <Rpmd.hpp>
+
 using namespace std;
 
-//********Variable Definitions****************************************
-
+//Compiler Definitions
 
 #define SERVER "localhost"
 #define USER "root"
 #define PASSWORD "raspberry"
 #define DATABASE "rpmd"
 
-/*
- a MYSQL pointer to a MYSQL connection
- */
+vector<UserParam> userParams;
+
+//MYSQL pointer to MYSQL connection
+ 
 MYSQL *connection;
 
+//Function Declaractions
+
+vector<UserParam> getUserParams();
 void connectToDatabase();
 void disconnectFromDatabase();
 void handleDBErr(MYSQL *con);
 
 int main(){
 
+  userParams = getUserParams();
 
-// const string DAY[]={"Sun","Mon","Tue",
-//    "Wed","Thu","Fri","Sat"};
+
+// const string DAY[]={"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
 
         time_t rawtime;
         tm * timeinfo;
@@ -41,19 +47,23 @@ int main(){
         timeinfo=localtime(&rawtime);
     int wday=timeinfo->tm_wday; //Day of week Sun=0,Sat=7
 
+cout << endl << userParams[0].paramType << userParams[0].userValue ;
 
+  return 0;
+}
 
-    connectToDatabase();
+vector<UserParam> getUserParams(){
+  vector<UserParam> params; //vector for user parameters
+
+  connectToDatabase();
 
     if(connection != NULL){
         //Retrieve all data
-        if(mysql_query(connection, "SELECT * FROM pet_names")){
+        if(mysql_query(connection, "SELECT * FROM user_params")){
             cout <<"NAMES :: ";
             handleDBErr(connection);
             cout << endl;
         }
-
-
 
 
         MYSQL_RES *result = mysql_store_result(connection);
@@ -67,9 +77,11 @@ int main(){
             int i = 0;
             while((row = mysql_fetch_row(result))){
                 if(num_fields == 2){
-                    char* pet_number = row[0];
-                    string pet_name = row[1];
-                    cout << "Added: " << pet_number << pet_name << endl;
+                    char* tempType = row[0];
+                    string tempValue = row[1];
+                    UserParam tempParam (tempType, tempValue);
+                    params.push_back(tempParam);
+                    cout << "Added: " << tempType << tempValue << endl;
                     i++;
                 }else{
                     cout << "MySQL: Wrong number of columns." << endl;
@@ -85,8 +97,9 @@ int main(){
 
 
     disconnectFromDatabase();
-    return 0;
+return params;
 }
+//============================
 
 
 /**
@@ -131,3 +144,66 @@ void handleDBErr(MYSQL *con){
     //exit(1);
 }//=========================================
 
+
+/*
+
+vector<Schedule> getSchedule(){
+    vector<Schedule> sched;   //a vector of the scheduled times
+
+    if(connection != NULL){
+        //Retrieve all data from alarm_times
+        if(mysql_query(connection, "SELECT * FROM alarm_times")){
+            cout <<"getAlarmTimes 1 :: ";
+            handleDBErr(connection);
+            cout << endl;
+        }
+        
+        MYSQL_RES *result = mysql_store_result(connection);
+        
+        if(result != NULL){
+            //Get the number of columns
+            int num_fields = mysql_num_fields(result);
+            
+            //Get all the alarms, and add them to the list
+            MYSQL_ROW row;
+            int i = 0;
+            while((row = mysql_fetch_row(result))){
+                if(num_fields == 4){
+                    string date = row[0], time = row[1], repeat = row[2],
+                           audioFile = row[3];
+                    AlarmTime tempTime (date, time, audioFile);
+                    times.push_back(tempTime);
+                    //cout << "Added: " << tempTime.toString() << endl;
+                    i++;
+                }else{
+                    cout << "MySQL: Wrong number of columns." << endl;
+                }
+            }
+            
+            mysql_free_result(result);
+            
+            //If the number of alarms has changed, print it out
+            if(times.size() != numAlarms){
+                cout << "**********************************" << endl;
+                cout << "Alarms" << endl;
+                cout << "**********************************" << endl;
+                for(long unsigned i = 0; i < times.size(); i++){
+                    cout << times[i].toString() << endl;
+                }
+                if(times.size() == 0){
+                    cout << "No alarms!" << endl;
+                }
+                cout << "**********************************" << endl << endl;
+            }
+            numAlarms = times.size();
+            return times;
+        }else{
+            cout <<"getAlarmTimes 2 :: ";
+            handleDBErr(connection);
+            cout << endl;
+        }
+    }
+    
+    return times;
+}//===========================
+*/
