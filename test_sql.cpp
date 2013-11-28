@@ -68,16 +68,11 @@ for (unsigned i=0; i<userParams.size(); i++)
 
 void sendEmail(int emailType){
 
-// int pType;
-// char* pType=1;
  string msgEmail;
  
  //Review user parameters to find email address
  for (unsigned i=0; i<userParams.size(); i++)
  { 
-//    pType= userParams[i].paramType;
-//    cout << "pType " << pType << endl;
-//    cout << userParams[i].paramType << endl;
     if(userParams[i].paramType=="1")
     {
 	//Set email address based on sql value
@@ -112,7 +107,7 @@ std::strcpy (message3, msgPart3.c_str());
 	if (emailType==2){system (message2);}
 	if (emailType==3){system (message3);}
   }
-
+  //future work:consider lighting error led if no command proc avail
 }
 //===================================
 

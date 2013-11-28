@@ -6,6 +6,9 @@
 #include <vector>
 #include <iostream>
 #include <stdio.h>
+//#include "/home/pi/OpenCV-2.4.3/include/opencv2/highgui/highgui.hpp"
+//#include "/home/pi/OpenCV-2.4.3/include/opencv2/imgproc/imgproc.hpp"
+//#include "/home/pi/OpenCV-2.4.3/include/opencv2/opencv.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/opencv.hpp"
