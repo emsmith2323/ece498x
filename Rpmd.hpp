@@ -12,11 +12,11 @@ private:
         int stringToInt(std::string);
 
 public:
-	std::string paramType; //0=schedule change, 1=email
+	int paramType; //0=schedule change, 1=email
 	std::string userValue;
 
 	UserParam(); //default constructor 
-	UserParam(std::string nParamType, std::string nUserValue)
+	UserParam(int nParamType, std::string nUserValue)
         {paramType=nParamType; userValue=nUserValue;}
         std::string toString();
 

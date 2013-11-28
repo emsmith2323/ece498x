@@ -7,7 +7,7 @@ LFLAGS = -Wall $(DEBUG)
 OBJS = rpmd.o
 TARGET_1 = rpmd
 LIBS_1 = `mysql_config --libs`
-COMP_1 = g++
+COMP_1 = g++ -std=c++0x
 CFLAGS_1 = -I. -Wall -c $(DEBUG) `mysql_config --cflags`
 
 

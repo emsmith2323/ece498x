@@ -16,20 +16,18 @@
 using namespace std;
 
 //Compiler Definitions
-
 #define SERVER "localhost"
 #define USER "root"
 #define PASSWORD "raspberry"
 #define DATABASE "rpmd"
 
+//Global Variables
 vector<UserParam> userParams;
 
 //MYSQL pointer to MYSQL connection
- 
 MYSQL *connection;
 
 //Function Declarations
-
 vector<UserParam> getUserParams();
 void connectToDatabase();
 void disconnectFromDatabase();
@@ -42,7 +40,7 @@ int main(){
   userParams = getUserParams();
 
 
-//Get Day of Week
+//Determine Day of Week
 // const string DAY[]={"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
         time_t rawtime;
         tm * timeinfo;
@@ -59,7 +57,7 @@ for (unsigned i=0; i<userParams.size(); i++)
   cout << "COL2: " <<  userParams[i].userValue << endl ;
 }
 
- sendEmail(0);
+// sendEmail(0);
 
   return 0;
 }
@@ -70,13 +68,13 @@ void sendEmail(int emailType){
 
  string msgEmail;
  
- //Review user parameters to find email address
+ //Review all user parameters to find email address
  for (unsigned i=0; i<userParams.size(); i++)
  { 
-    if(userParams[i].paramType=="1")
+    if(userParams[i].paramType==1) //paramType 1 is email addr
     {
 	//Set email address based on sql value
-	msgEmail = userParams[1].userValue;
+	msgEmail = userParams[i].userValue;
     }
  }
 
@@ -124,23 +122,23 @@ vector<UserParam> getUserParams(){
             cout << endl;
         }
 
-
         MYSQL_RES *result = mysql_store_result(connection);
 
         if(result != NULL){
             //Get the number of columns
             int num_fields = mysql_num_fields(result);
 
-            //Get all the rows
+            //Get all the rows in table
             MYSQL_ROW row;
             int i = 0;
             while((row = mysql_fetch_row(result))){
-                if(num_fields == 2){
-                    string tempType = row[0];
+                if(num_fields == 2){ //verify appropriate # cols
+                    int tempType = std::stoi (row[0]);
                     string tempValue = row[1];
-                    UserParam tempParam (tempType, tempValue);
-                    params.push_back(tempParam);
-                    cout << "Added: " << tempType << tempValue << endl;
+                    UserParam tempParam (tempType, tempValue); //create temp vector
+                    params.push_back(tempParam); //add temp vector to full set
+
+                    //cout << "Added: " << tempType << tempValue << endl;
                     i++;
                 }else{
                     cout << "MySQL: Wrong number of columns." << endl;
@@ -152,7 +150,6 @@ vector<UserParam> getUserParams(){
             }
    }
 
-
     disconnectFromDatabase();
 
 return params;
@@ -160,7 +157,7 @@ return params;
 //============================
 
 
-//Connect to MySQL Database identified by constants SERVER, USER, PASSWORD, DATABASE
+//Connect to MySQL using SERVER, USER, PASSWORD, DATABASE
 
 void connectToDatabase(){
     //initialize MYSQL object for connection
