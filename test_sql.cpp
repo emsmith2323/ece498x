@@ -68,13 +68,20 @@ for (unsigned i=0; i<userParams.size(); i++)
 
 void sendEmail(int emailType){
 
+// int pType;
+// char* pType=1;
+ string msgEmail;
+ 
  //Review user parameters to find email address
  for (unsigned i=0; i<userParams.size(); i++)
  { 
-    if(userParams[i].paramType==1)
+//    pType= userParams[i].paramType;
+//    cout << "pType " << pType << endl;
+//    cout << userParams[i].paramType << endl;
+    if(userParams[i].paramType=="1")
     {
 	//Set email address based on sql value
-	string msgEmail = userParams[i].userValue;
+	msgEmail = userParams[1].userValue;
     }
  }
 
@@ -134,7 +141,7 @@ vector<UserParam> getUserParams(){
             int i = 0;
             while((row = mysql_fetch_row(result))){
                 if(num_fields == 2){
-                    char* tempType = row[0];
+                    string tempType = row[0];
                     string tempValue = row[1];
                     UserParam tempParam (tempType, tempValue);
                     params.push_back(tempParam);
