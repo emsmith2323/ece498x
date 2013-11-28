@@ -1,24 +1,182 @@
+sql values used in c++
 
-On startup:
+user_params
+ param_type=0 --row for indicating schedule change
+ user_value='y' --a change has been made to schedule
+
+ param_type=1 --row for email
+ user_value=emailaddress
+
+ param_type=2
+ user_value=timezone
+
+pill_schedule - 1 row per schedule item
+ pill_number
+ pet_number
+ sched_date
+ sched_time
+
+note: array contains all values in pill_schedule plus last_run_date
+
+email_type
+0=Pill delivered
+1=Failed to summon pet
+2=Pill not present at start of delivery request
+3=Pill still present at end of delivery request (timeout)
+
+on_demand
+ pet_number --pet to summon '0' used for load command
+ pill_number
 
 
-schedule thread
--get pill schedule
--loop through each pills schedule, wait 1 minute, repeat
---compare schedule day time to current schedule time
---if match loop twice
-----increment loop counter
-----call summon pet [send pet_number]
-----if summon pet returns 0 : STOPPED HERE
+main
+-call check_schedule --to clear 'schedule changed' flag if needed
+-call run_schedule
 
-summon pet thread
+run_schedule
+[min time 30 seconds]
+-set n=0
+-call get_schedule [returns array]
+-loop indefinitely 
+--call check_schedule
+--if check_schedule returns 1 then call get_schedule --schedule changed, get new schedule
+--if array[n]:scheduled_day=current day
+  and array[n]:scheduled_hour=current hour
+  and array[n]:scheduled_minute=current minute
+  and array[n]:last_run_date!=current date
+  then --TIME FOR PILL
+----set array[n]:last_run_date = current date --prevent multiple deliveries
+----call delivery_procedure [send pet_number,pill_number]
+--endif
+--loop 3x --idle process (also checks for on demand commands)
+----wait 10 seconds
+----call check_ondemand
+--end loop 3x
+-end loop indefinitely
+
+delivery_procedure
+[requires pet_number]
+[requires pill_number]
+-loop 2x --begin pill delivery
+---increment loop counter
+---call verify_pill [send pill_number]
+---if verify_pill==0 then{send_email [email_type=2], break}
+---if verify_pill==1 then
+-----call summon_pet [send pet_number] //summon pet tries twice for 30 sec each
+-----if summon_pet returns 1 --pet present
+     then
+-------call deliver_pill [send pill_number] --deliver_pill handles its own email alerts
+     else
+-------call send_email [send email_type=1] --pet did not come
+-end loop 2x
+
+check_ondemand
+--set n= #of rows in on_demand
+--for n>0 
+----pull row n (or maybe it will be n-1)
+----get pill_number
+----get pet_number
+----delete row
+----if pet_number <> '0'
+    then call delivery_procedure [send pet_number,pill_number]
+    else call load_procedure [send pill_number]
+--end for loop
+
+
+summon_pet
+[max time 30 sec]
+[requires pet number]
+[returns 1 when pet appears]
+[returns 0 if no pet appears]
 -summon [pet_number]
--loop 6x
+-loop 3x
 --increment loop counter
---request verification pet is present
---if true return 1
---if false wait 10 seconds
+--call verify_pet [send pet_number]
+---if true return 1
+---if false wait 10 seconds
+-end loop 3x
 -return 0
 
+get_schedule
+[returns schedule array]
+-loop for all rows in schedule table
+--populate schedule array via sql
+-end loop
+-return array
 
+check_schedule
+[clears schedule changed flag]
+[returns 1 if schedule changed]
+[returns 0 if no change]
+-if (select user_value from user_params where param_type=0) = "y"
+ then
+---(update user_params set user_value = "n" where param_type=0)
+---return 1
+ else
+---return 0
+
+deliver_pill
+[requires pill_number]
+---call open_tray [send pill_number]
+---loop 6x
+-----wait 10 seconds
+-----call verify_pet [send pet_number] //originally this was verify_pill, but ambient lights affect on sensor forced change
+-------if verify_pet==0 //pet left area, presumably after consuming pill 
+       then
+---------break
+--------endif
+---end loop 6x
+---call close_tray [send pill_number] //pet left or gave up on pet leaving area
+---call verify_pill [send pill_number]
+---if verify_pill==0
+   then
+-----call send_email [email_type=0] --delivery success
+   else
+-----call send_email [email_type=3] --delivery timeout
+---endif
+
+load_procedure
+[requires pill_number]
+-call open_tray [send pill_number]
+---loop 10x or until verify_pill=1
+-----wait 5 seconds
+-----call verify_pill [send pill_number]
+---end loop 10x or until verify_pill=1
+-if last verify_pill!=1 then send_email [email_type=4] //there was an error loading pill
+-wait 5 seconds --allowing user to move away
+-call close_tray [send pill_number]
+
+
+open_tray
+[requires pill_number]
+-uart: send appropriate tray code based on pill_number
+
+close_tray
+[requires pill_number]
+-uart: send appropriate home code based on pill_number
+
+verify_pill
+[requires pill_number]
+[returns 1 if pill detected]
+[returns 0 if pill NOT detected]
+-uart: send pill_number [1-6]
+-uart: receive 'y' or 'n'
+-if 'y' then return 1
+-if 'n' then return 0
+
+send_email
+[requires email_type]
+-get email (sql select user_value from user_params where param_type=1)
+-send email based on type
+
+email_type
+0=Pill delivered
+1=Failed to summon pet
+2=Pill not present at start of delivery request
+3=Pill still present at end of delivery request (timeout)
+
+verify_pet
+[requires pet_number]
+-if pet is present return 1
+-if pet not present return 0
 

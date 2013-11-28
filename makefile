@@ -7,7 +7,7 @@ LFLAGS = -Wall $(DEBUG)
 OBJS = rpmd.o
 TARGET_1 = rpmd
 LIBS_1 = `mysql_config --libs`
-COMP_1 = g++ -std=c++0x
+COMP_1 = g++ -std=c++0x #-std=c++0x required by std::sot
 CFLAGS_1 = -I. -Wall -c $(DEBUG) `mysql_config --cflags`
 
 
