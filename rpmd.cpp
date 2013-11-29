@@ -15,14 +15,16 @@
 
 using namespace std;
 
-//Compiler Definitions
+//Preprocesor Definitions
 #define SERVER "localhost"
 #define USER "root"
 #define PASSWORD "raspberry"
 #define DATABASE "rpmd"
 
 //Global Variables
+bool verbose=false;
 vector<UserParam> userParams;
+
 
 //MYSQL pointer to MYSQL connection
 MYSQL *connection;
@@ -35,9 +37,23 @@ void disconnectFromDatabase();
 void handleDBErr(MYSQL *con);
 void sendEmail(int emailType);
 
-int main(){
+int main(int argc,char *argv[]){
+
+  //Process command line arguments
+  for(int i=1;i<argc;i++)
+  {
+    //Use 'v' command line argument for verbose mode
+    if(strcmp(argv[i],"v")==0){verbose=true;}
+  }
+
+  //List enabled command line options
+  if(verbose==true){cout<<"Verbose Mode"<<endl;}
+
+  //Connect to SQL database
+  connectToDatabase();
 
   //Populate User Parameters vector with database values
+  if(verbose==true){cout<<"Calling getUserParams"<<endl;}
   userParams = getUserParams();
 
 
@@ -48,26 +64,38 @@ int main(){
         time(&rawtime);
         timeinfo=localtime(&rawtime);
     int wday=timeinfo->tm_wday; //Day of week Sun=0,Sat=7
+    if(verbose==true){cout<<"Day of week "<<wday<<endl;}
 
 //Print user parameters
-for (unsigned i=0; i<userParams.size(); i++)
-{
-  cout << endl << wday ;
-  cout << endl << "ROW" << i << "::";
-  cout << "COL1: " << userParams[i].paramType << " ";
-  cout << "COL2: " <<  userParams[i].userValue << endl ;
+if(verbose==true){cout<<"Listing Stored User Params"<<endl;
+ for (unsigned i=0; i<userParams.size(); i++)
+ {
+   cout << "ROW" << i << "::";
+   cout << "paramType " << userParams[i].paramType << " ";
+   cout << "userValue " <<  userParams[i].userValue << endl ;
+ }
 }
+
+//Check for On Demand requests
+if(verbose==true){cout<<"Calling checkOnDemand"<<endl;}
+checkOnDemand();
 
 // sendEmail(0);
 
-  return 0;
+//Disconnect from SQL database
+disconnectFromDatabase();
+
+return 0;
 }
 
 //===============================
 
 void checkOnDemand(){
+
   vector<OnDemand> demand; //vector for on demand requests
-  connectToDatabase();
+  if(verbose==true){cout<<"Fetching On Demand"<<endl;}
+
+//  connectToDatabase();
 
     if(connection != NULL)
     {
@@ -84,27 +112,35 @@ void checkOnDemand(){
         if(result != NULL)
         {
             //Get the number of columns
-            int num_fields = mysql_num_fields(result);
+         //   int num_fields = mysql_num_fields(result);
 
             //Process all the rows in table
             MYSQL_ROW row;
-            int i = 0;
+        //    int i = 0;
             while((row = mysql_fetch_row(result)))
             { 
-                    i++;
+        //            i++;
                     int tempPillNumber = std::stoi (row[1]);
-                    int tempPetNumber = std::sot (row[2]);
+                    int tempPetNumber = std::stoi (row[2]);
                     OnDemand tempDemand (tempPillNumber, tempPetNumber); //create temp vector
                     demand.push_back(tempDemand); //add temp vector to full set
-
-
-			   
-cout <<  "Added " << demand.petNumber << " " << demand.pillNumber << end;
 
 
             } //end while
             
             mysql_free_result(result);
+
+
+//Print on demand
+if (verbose==true){
+ for (unsigned j=0; j<demand.size(); j++)
+ {
+   cout << "ondemand ROW" << j << "::";
+   cout << "petNumber " << demand[j].petNumber << " ";
+   cout << "pillNumber " <<  demand[j].pillNumber << endl ;
+ }
+}
+			   
 
   /* ADDING DELETE ROWS  STOPPED HERE          
             //delete all rows
@@ -125,7 +161,7 @@ cout <<  "Added " << demand.petNumber << " " << demand.pillNumber << end;
         }//end result !=null
    }//end connection !=null
 
-    disconnectFromDatabase();
+//    disconnectFromDatabase();
 
 }
 //======================== 
@@ -134,9 +170,11 @@ cout <<  "Added " << demand.petNumber << " " << demand.pillNumber << end;
 //Get User Parameters
 
 vector<UserParam> getUserParams(){
-  vector<UserParam> params; //vector for user parameters
 
-  connectToDatabase();
+  vector<UserParam> params; //vector for user parameters
+  if(verbose==true){cout<<"Fetching User Params"<<endl;}
+
+ // connectToDatabase();
 
     if(connection != NULL){
         //Retrieve all data
@@ -150,32 +188,24 @@ vector<UserParam> getUserParams(){
 
         if(result != NULL){
             //Get the number of columns
-            int num_fields = mysql_num_fields(result);
+         //   int num_fields = mysql_num_fields(result);
 
             //Get all the rows in table
             MYSQL_ROW row;
-            int i = 0;
+          //  int i = 0;
             while((row = mysql_fetch_row(result))){
-                if(num_fields == 2){ //verify appropriate # cols
-                    int tempType = std::stoi (row[0]);
-                    string tempValue = row[1];
-                    UserParam tempParam (tempType, tempValue); //create temp vector
-                    params.push_back(tempParam); //add temp vector to full set
+                 int tempType = std::stoi (row[0]);
+                 string tempValue = row[1];
+                 UserParam tempParam (tempType, tempValue); //create temp vector
+                 params.push_back(tempParam); //add temp vector to full set
+                 if(verbose==true){cout << "Added: "<<tempType<<tempValue<<endl;}
+           //      i++;
+                }//end while
 
-                    //cout << "Added: " << tempType << tempValue << endl;
-                    i++;
-                }else{
-                    cout << "MySQL: Wrong number of columns." << endl;
-                }
-            }
-            
             mysql_free_result(result);
-            
-            }
-   }
-
-    disconnectFromDatabase();
-
+         }//end if result!=null
+      }//end if connection!=null   
+       
 return params;
 }
 //============================
@@ -197,17 +227,19 @@ void connectToDatabase(){
             DATABASE, 0, NULL, 0) == NULL){
         handleDBErr(connection);
     }else{
-        printf("Database connection successful.\n");
+        if(verbose==true){cout<<"Database connection successful"<<endl;}
     }
-}//================================
+}
+//================================
 
 
 //Disconnect from Database
 
 void disconnectFromDatabase(){
     mysql_close(connection);
-    cout << "Disconnected from database." << endl;
-}//=========================================
+    if(verbose==true){cout<<"Disconnected from database"<<endl;}
+}
+//=========================================
 
 
 //Handle database connection errors
@@ -216,11 +248,13 @@ void handleDBErr(MYSQL *con){
     fprintf(stderr, "%s\n", mysql_error(con));
     //mysql_close(con);
     //exit(1);
-}//=========================================
+}
+//=========================================
 
 //Send Email
 
 void sendEmail(int emailType){
+ if(verbose==true){cout<<"Sending Email # "<<emailType<<endl;}
 
  string msgEmail;
  
