@@ -7,7 +7,7 @@
 class UserParam{
 
 private:
-	int pType;
+	 int pType;
         std::string uValue;
         int stringToInt(std::string);
 
@@ -21,6 +21,25 @@ public:
         std::string toString();
 
 };
+
+class OnDemand{
+
+private:
+	int petNum;
+       int pillNum;
+       int stringToInt(std::string);
+
+public:
+	int petNumber; //0=schedule change, 1=email
+	int pillNumber;
+
+	OnDemand(); //default constructor 
+	OnDemand(int nPetNumber, int nPillNumber)
+        {petNumber=nPetNumber; pillNumber=nPillNumber;}
+       std::string toString();
+
+};
+
 
 //void UserParam::setParam (char* nParamType, std::string nUserValue){
 // paramType = nParamType;

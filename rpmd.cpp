@@ -29,6 +29,7 @@ MYSQL *connection;
 
 //Function Declarations
 vector<UserParam> getUserParams();
+void checkOnDemand();
 void connectToDatabase();
 void disconnectFromDatabase();
 void handleDBErr(MYSQL *con);
@@ -64,50 +65,73 @@ for (unsigned i=0; i<userParams.size(); i++)
 
 //===============================
 
-void sendEmail(int emailType){
+void checkOnDemand(){
+  vector<OnDemand> demand; //vector for on demand requests
+  connectToDatabase();
 
- string msgEmail;
- 
- //Review all user parameters to find email address
- for (unsigned i=0; i<userParams.size(); i++)
- { 
-    if(userParams[i].paramType==1) //paramType 1 is email addr
+    if(connection != NULL)
     {
-	//Set email address based on sql value
-	msgEmail = userParams[i].userValue;
-    }
- }
+        //Retrieve all data
+        if(mysql_query(connection, "SELECT * FROM on_demand"))
+        {
+            cout <<"ONDEMAND :: ";
+            handleDBErr(connection);
+            cout << endl;
+        }
 
-//Create variables for each email message type
+        MYSQL_RES *result = mysql_store_result(connection);
 
-string msgPart0 = "echo \"Pill delivered\" | mail -s \"RPMD Status\" "+msgEmail; 
-char * message0 = new char [msgPart0.length()+1]; //allocate message var
-std::strcpy (message0, msgPart0.c_str()); //populate message var
+        if(result != NULL)
+        {
+            //Get the number of columns
+            int num_fields = mysql_num_fields(result);
 
-string msgPart1 = "echo \"Pet did not come when called\" | mail -s \"RPMD Status\" "+msgEmail; 
-char * message1 = new char [msgPart1.length()+1];
-std::strcpy (message1, msgPart1.c_str());
+            //Process all the rows in table
+            MYSQL_ROW row;
+            int i = 0;
+            while((row = mysql_fetch_row(result)))
+            { 
+                    i++;
+                    int tempPillNumber = std::stoi (row[1]);
+                    int tempPetNumber = std::sot (row[2]);
+                    OnDemand tempDemand (tempPillNumber, tempPetNumber); //create temp vector
+                    demand.push_back(tempDemand); //add temp vector to full set
 
-string msgPart2 = "echo \"No pill to deliver\" | mail -s \"RPMD Status\" "+msgEmail; 
-char * message2 = new char [msgPart2.length()+1];
-std::strcpy (message2, msgPart2.c_str());
 
-string msgPart3 = "echo \"Pet did not eat pill\" | mail -s \"RPMD Status\" "+msgEmail; 
-char * message3 = new char [msgPart3.length()+1];
-std::strcpy (message3, msgPart3.c_str());
+			   
+cout <<  "Added " << demand.petNumber << " " << demand.pillNumber << end;
 
 
-//send appropriate email
-  if (system(NULL)) //a command processor is available
-  { 
-	if (emailType==0){system (message0);}
-	if (emailType==1){system (message1);}
-	if (emailType==2){system (message2);}
-	if (emailType==3){system (message3);}
-  }
-  //future work:consider lighting error led if no command proc avail
+            } //end while
+            
+            mysql_free_result(result);
+
+  /* ADDING DELETE ROWS  STOPPED HERE          
+            //delete all rows
+            if(mysql_query(connection, command))
+            {
+              cout <<"DeleteOnDemand :: ";
+              handleDBErr(connection);
+              cout << endl;
+             }
+             else
+             {
+
+              vector<AlarmTime>::iterator it = alarmTimes.begin() + i;
+              alarmTimes.erase(it);
+                        i--;
+              }            
+*/
+        }//end result !=null
+   }//end connection !=null
+
+    disconnectFromDatabase();
+
 }
-//===================================
+//======================== 
+
+
+//Get User Parameters
 
 vector<UserParam> getUserParams(){
   vector<UserParam> params; //vector for user parameters
@@ -185,17 +209,61 @@ void disconnectFromDatabase(){
     cout << "Disconnected from database." << endl;
 }//=========================================
 
-/**
- * Handle database errors. This function will print the error to the screen, 
- * close the connection to the database, and exit the program with an error.
- * @param con a MYSQL pointer to the connection object
- */
+
+//Handle database connection errors
+
 void handleDBErr(MYSQL *con){ 
     fprintf(stderr, "%s\n", mysql_error(con));
     //mysql_close(con);
     //exit(1);
 }//=========================================
 
+//Send Email
+
+void sendEmail(int emailType){
+
+ string msgEmail;
+ 
+ //Review all user parameters to find email address
+ for (unsigned i=0; i<userParams.size(); i++)
+ { 
+    if(userParams[i].paramType==1) //paramType 1 is email addr
+    {
+	//Set email address based on sql value
+	msgEmail = userParams[i].userValue;
+    }
+ }
+
+//Create variables for each email message type
+
+string msgPart0 = "echo \"Pill delivered\" | mail -s \"RPMD Status\" "+msgEmail; 
+char * message0 = new char [msgPart0.length()+1]; //allocate message var
+std::strcpy (message0, msgPart0.c_str()); //populate message var
+
+string msgPart1 = "echo \"Pet did not come when called\" | mail -s \"RPMD Status\" "+msgEmail; 
+char * message1 = new char [msgPart1.length()+1];
+std::strcpy (message1, msgPart1.c_str());
+
+string msgPart2 = "echo \"No pill to deliver\" | mail -s \"RPMD Status\" "+msgEmail; 
+char * message2 = new char [msgPart2.length()+1];
+std::strcpy (message2, msgPart2.c_str());
+
+string msgPart3 = "echo \"Pet did not eat pill\" | mail -s \"RPMD Status\" "+msgEmail; 
+char * message3 = new char [msgPart3.length()+1];
+std::strcpy (message3, msgPart3.c_str());
+
+
+//send appropriate email
+  if (system(NULL)) //a command processor is available
+  { 
+	if (emailType==0){system (message0);}
+	if (emailType==1){system (message1);}
+	if (emailType==2){system (message2);}
+	if (emailType==3){system (message3);}
+  }
+  //future work:consider lighting error led if no command proc avail
+}
+//===================================
 
 /*
 
