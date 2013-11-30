@@ -17,15 +17,21 @@
 
 using namespace std;
 
-//Preprocesor Definitions
+//Preprocessor Definitions
 #define SERVER "localhost"
 #define USER "root"
 #define PASSWORD "raspberry"
 #define DATABASE "rpmd"
+#define LOADWAIT 5 //time to wait for user during load
+#define PETWAIT 6 //Value x10 is seconds to wait for 
+                  //pet to eat pill and leave before tray close
+#define BAUD 9600 //baud rate for serial device
+
 
 //Global Variables
 bool verbose=false;
 vector<UserParam> userParams;
+int serialDevice; //serial device
 
 
 //MYSQL pointer to MYSQL connection
@@ -38,44 +44,15 @@ void connectToDatabase();
 void disconnectFromDatabase();
 void handleDBErr(MYSQL *con);
 void sendEmail(int emailType);
+void loadProcedure(int pillNumber);
+void deliveryProcedure(int petNumber, int pillNumber);
+int deliverPill(int petNumber, int pillNumber);
+int summonPet(int petNumber);
+void openTray(int pillNumber);
+void closeTray(int pillNumber);
+int verifyPet(int petNumber);
 
 int main(int argc,char *argv[]){
-
-
- printf ("begin\n");
-	int data;
-	int dev;
-  //Open serial device for communication
-  if ((dev=serialOpen ("/dev/ttyAMA0", 9600)) < 0)
-  {
-    fprintf (stderr, "Unable to open serial device: %s\n", strerror (errno)) ;
-    return 1 ;
-  }
-
-  if (wiringPiSetup () == -1)
-  {
-    fprintf (stdout, "Unable to start wiringPi: %s\n", strerror (errno)) ;
-    return 1 ;
-  }
-
-printf ("initialized\n");
-
-int a='a';
-serialPutchar (dev, a);
-
-printf ("char sent\n");
-
-/*
-for (;;)
-{   
-	if (serialDataAvail (dev) >0)
-	{
-		data = serialGetchar (dev);
-		printf("%c\n", data );
-		//printf ( "%c", data);
-	}
-}
-*/
 
   //Process command line arguments
   for(int i=1;i<argc;i++)
@@ -84,39 +61,55 @@ for (;;)
     if(strcmp(argv[i],"v")==0){verbose=true;}
   }
 
-  //List enabled command line options
+  //List enabled command line options if verbose
   if(verbose==true){cout<<"Verbose Mode"<<endl;}
+
+  //Open serial device for communication
+  if(verbose==true){cout<<"Initializing serial device"<<endl;
+  if ((serialDevice=serialOpen ("/dev/ttyAMA0", BAUD)) < 0)
+  {
+    fprintf (stderr, "Unable to open serial device: %s\n", strerror (errno)) ;
+    return 1 ;
+  }
+
+  //Setup wiring pi
+  if(verbose==true){cout<<"Setting up Wiring Pi"<<endl;
+  if (wiringPiSetup () == -1)
+  {
+    fprintf (stdout, "Unable to start wiringPi: %s\n", strerror (errno)) ;
+    return 1 ;
+  }
 
   //Connect to SQL database
   connectToDatabase();
 
-  //Populate User Parameters vector with database values
-  if(verbose==true){cout<<"Calling getUserParams"<<endl;}
-  userParams = getUserParams();
+  //Begin repeated procedure
+  for(;;){
 
+     //Populate User Parameters vector with database values
+     if(verbose==true){cout<<"Calling getUserParams"<<endl;}
+     userParams = getUserParams();
 
-//Determine Day of Week
-// const string DAY[]={"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
-        time_t rawtime;
-        tm * timeinfo;
-        time(&rawtime);
-        timeinfo=localtime(&rawtime);
-    int wday=timeinfo->tm_wday; //Day of week Sun=0,Sat=7
-    if(verbose==true){cout<<"Day of week "<<wday<<endl;}
+     //Print user parameters if verbose
+     if(verbose==true){cout<<"Listing Stored User Params"<<endl;
+       for (unsigned i=0; i<userParams.size(); i++)
+       {
+          cout << "ROW" << i << "::";
+          cout << "paramType " << userParams[i].paramType << " ";
+          cout << "userValue " <<  userParams[i].userValue << endl ;
+       }
+     }
 
-//Print user parameters
-if(verbose==true){cout<<"Listing Stored User Params"<<endl;
- for (unsigned i=0; i<userParams.size(); i++)
- {
-   cout << "ROW" << i << "::";
-   cout << "paramType " << userParams[i].paramType << " ";
-   cout << "userValue " <<  userParams[i].userValue << endl ;
- }
-}
+     for(int i=0;i<3;i++){
 
-//Check for On Demand requests
-if(verbose==true){cout<<"Calling checkOnDemand"<<endl;}
-checkOnDemand();
+        //Check for On Demand requests
+        if(verbose==true){cout<<"Calling checkOnDemand"<<endl;}
+        checkOnDemand();
+     } //end loop 3x check on demand
+
+  } //end repeated procedure
+  
+
 
 // sendEmail(0);
 
@@ -129,16 +122,16 @@ return 0;
 //===============================
 
 void checkOnDemand(){
+  if(verbose==true){cout<<"Beginning Check On Demand"<<endl;}
 
   vector<OnDemand> demand; //vector for on demand requests
-  if(verbose==true){cout<<"Fetching On Demand"<<endl;}
 
     //Connect to database if not connected
     if(connection==NULL){connectToDatabase();}
 
     if(connection != NULL)
     {
-        //Retrieve all data from table
+        //Retrieve all data from table in descending order to process oldest first
         if(mysql_query(connection, "SELECT * FROM on_demand ORDER BY sort_order DESC"))
         {
             cout <<"ONDEMAND :: ";
@@ -149,54 +142,58 @@ void checkOnDemand(){
 	  //Store result
         MYSQL_RES *result = mysql_store_result(connection);
 
-    	  //Delete all data from table
-        if(mysql_query(connection, "DELETE FROM on_demand"))
-        {
-           cout <<"ONDEMAND DEL :: ";
-           handleDBErr(connection);
-           cout << endl;
-         }
-
-    	  //Reset 'order' which is an auto increment field
-        if(mysql_query(connection, "ALTER TABLE on_demand AUTO_INCREMENT=1"))
-        {
-           cout <<"ONDEMAND DEL :: ";
-           handleDBErr(connection);
-           cout << endl;
-         }
-
-	  //If there is data, handle it
+	  //If there was data, reset SQL table and process on demand requests 
         if(result != NULL)
         {
 
-            //Process all the rows in table
+    	     //Delete all data from SQL table
+           if(mysql_query(connection, "DELETE FROM on_demand"))
+           {
+              cout <<"ONDEMAND DEL :: ";
+              handleDBErr(connection);
+              cout << endl;
+            }
+
+    	     //Reset 'sort_order' in SQL table
+           if(mysql_query(connection, "ALTER TABLE on_demand AUTO_INCREMENT=1"))
+           {
+              cout <<"ONDEMAND DEL :: ";
+              handleDBErr(connection);
+              cout << endl;
+           }
+
+            //Add all the rows in result to demand vector
             MYSQL_ROW row;
             while((row = mysql_fetch_row(result)))
             { 
-                    int tempPillNumber = std::stoi (row[1]);
-                    int tempPetNumber = std::stoi (row[2]);
-                    OnDemand tempDemand (tempPillNumber, tempPetNumber); //create temp vector
-                    demand.push_back(tempDemand); //add temp vector to full set
-                    if(verbose==true){
-                      cout<<"Added to ondemand vector: "<<tempPillNumber;
-                      cout<<" "<<tempPetNumber<<endl;
-                    }
-            } //end while
+               int tempPillNumber = std::stoi (row[1]);
+               int tempPetNumber = std::stoi (row[2]);
+               OnDemand tempDemand (tempPillNumber, tempPetNumber); //create temp vector
+               demand.push_back(tempDemand); //add temp vector to full set
+               if(verbose==true){
+                  cout<<"Added to ondemand vector: "<<tempPillNumber;
+                  cout<<" "<<tempPetNumber<<endl;
+                  }
+            } //end while there are rows
             
             mysql_free_result(result);
 
-//Delete on demand vector
-for (int i=demand.size()-1; i!=-1; i--)
- {
-   if(verbose==true){
-     cout << "Delete ondemand ROW" << i << "::";
-     cout << "petNumber " << demand[i].petNumber << " ";
-     cout << "pillNumber " <<  demand[i].pillNumber << endl;
-   }
-   demand.pop_back();//delete last element
- }//end for
+            //Process on demand vector
+            for (int i=demand.size()-1; i!=-1; i--)
+              {
+                 if(verbose==true){cout<<"Processing on demand command"<<endl;}
+                 if(demand[i].petNumber==0){loadProcedure(demand[i].pillNumber);}
+                 else{deliveryProcedure(demand[i].petNumber,demand[i].pillNumber);}
+
+                 if(verbose==true){
+                   cout << "Delete ondemand ROW" << i << "::";
+                   cout << "petNumber " << demand[i].petNumber << " ";
+                   cout << "pillNumber " <<  demand[i].pillNumber << endl;
+                  }
+                  demand.pop_back();//delete last element
+             }//end for demand vector elements
 			   
-        }//end result !=null
+        }//end result of sql query !=null
    }//end connection !=null
 
 if(verbose==true){
@@ -216,9 +213,9 @@ if(verbose==true){
 //Get User Parameters
 
 vector<UserParam> getUserParams(){
-
+  if(verbose==true){cout<<"Beginning User Param"<<endl;}
   vector<UserParam> params; //vector for user parameters
-  if(verbose==true){cout<<"Fetching User Params"<<endl;}
+
 
  // connectToDatabase();
 
@@ -233,24 +230,24 @@ vector<UserParam> getUserParams(){
         MYSQL_RES *result = mysql_store_result(connection);
 
         if(result != NULL){
-            //Get the number of columns
-         //   int num_fields = mysql_num_fields(result);
-
+  
             //Get all the rows in table
             MYSQL_ROW row;
-          //  int i = 0;
+
+            //Add rows to params vector
             while((row = mysql_fetch_row(result))){
-                 int tempType = std::stoi (row[0]);
-                 string tempValue = row[1];
-                 UserParam tempParam (tempType, tempValue); //create temp vector
-                 params.push_back(tempParam); //add temp vector to full set
-                 if(verbose==true){cout << "Added: "<<tempType<<tempValue<<endl;}
-           //      i++;
-                }//end while
+               int tempType = std::stoi (row[0]);
+               string tempValue = row[1];
+               UserParam tempParam (tempType, tempValue); //create temp vector
+               params.push_back(tempParam); //add temp vector to full set
+               if(verbose==true){cout << "Added: "<<tempType<<tempValue<<endl;}
+            }//end while
 
             mysql_free_result(result);
          }//end if result!=null
       }//end if connection!=null   
+
+if(verbose==true){cout<<"End User Param"<<endl;}
        
 return params;
 }
@@ -332,6 +329,9 @@ string msgPart3 = "echo \"Pet did not eat pill\" | mail -s \"RPMD Status\" "+msg
 char * message3 = new char [msgPart3.length()+1];
 std::strcpy (message3, msgPart3.c_str());
 
+string msgPart4 = "echo \"Pill not detected after load\" | mail -s \"RPMD Status\" "+msgEmail; 
+char * message4 = new char [msgPart4.length()+1];
+std::strcpy (message4, msgPart4.c_str());
 
 //send appropriate email
   if (system(NULL)) //a command processor is available
@@ -340,10 +340,170 @@ std::strcpy (message3, msgPart3.c_str());
 	if (emailType==1){system (message1);}
 	if (emailType==2){system (message2);}
 	if (emailType==3){system (message3);}
+      if (emailType==4){system (message4);}
   }
   //future work:consider lighting error led if no command proc avail
+
+if(verbose==true){cout<<"Send Email Complete"<<endl;}
 }
 //===================================
+
+
+//Load procedure
+void loadProcedure(int pillNumber){
+   if(verbose==true){cout<<"Starting Load Procedure"<<endl;}
+
+   openTray(int pillNumber);
+   
+   if(verbose==true){cout<<"Waiting for pill to be loaded"<<endl;}
+   sleep(LOADWAIT); //wait ## seconds for user to load pill
+
+   closeTray(int pillNumber);
+
+   //If pill not detected after load cycle, inform user via email
+   if(verifyPill(pillNumber)==0){sendEmail(4);}
+
+   if(verbose==true){cout<<"Load Procedure Complete"<<endl;}
+}
+//====================
+
+
+//Delivery procedure
+void deliveryProcedure(int petNumber, int pillNumber){
+   if(verbose==true){cout<<"Starting Delivery Procedure"<<endl;}
+   
+   for(int i=0;i<2;i++){
+      if(verifyPill(pillNumber)==0){ //Pill not present
+         sendEmail(2); //inform user no pill present
+         break; //end for loop
+      }else{ //Pill is present, begin delivery
+         if(summonPet(petNumber)==1){ //Pet is present
+            deliverPill(petNumber, pillNumber); //deliver pill informs user of status
+         }else{//Pet is not present
+            sendEmail(1); //Pet did not come when called
+          }//end pet not present else
+       }//end pill is present else 
+   }//end for loop
+ 
+   if(verbose==true){cout<<"Delivery Procedure Complete"<<endl;}
+
+}
+//=======================
+
+//Deliver pill
+void deliverPill(int petNumber, int pillNumber){
+   if(verbose==true){cout<<"Delivering Pill"<<endl;}
+
+   openTray(pillNumber);
+
+   //wait for PETWAIT x10 seconds pet to leave
+   for(int i=0; i<PETWAIT; i++){
+      sleep(10); //wait 10 seconds
+      if(verifyPet(petNumber)==0){break;}//pet left area
+   }
+
+   closeTray(pillNumber); //Pet left area or timeout so close tray
+
+   if(verifyPill(pillNumber)==0){ //Pill not present
+      sendEmail(0); //inform user Delivery success
+   }else{ //Pill present
+      sendEmail(3); //inform user Delivery timeout
+    }
+
+   if(verbose==true){cout<<"Deliver Pill Complete"<<endl;}
+
+}
+//=======================
+
+int verifyPill(int pillNumber){
+  if(verbose==true){cout<<"Starting Verify Pill"<<endl;}
+ 
+  int dataReceived;  
+
+  serialPutchar (serialdevice, pillNumber);
+  
+  for(int i; i<30; i++) //poll for data for 30 seconds max
+  {   
+     if (serialDataAvail (seraildevice) >0)  //if data is waiting
+	{
+		dataReceived = serialGetchar (serialdevice);
+            break;
+	}
+      sleep(1); //check for new data once per second
+  }
+  
+  if(verbose==true){cout<<Verification Result<<dataReceived<<endl;}
+  if(dataReceived==y){return 1;}
+
+return 0;  //no pill or timeout
+
+}
+//===================
+
+
+void openTray(int pillNumber){
+  if(verbose==true){cout<<"Starting Open Tray"<<endl;}  
+
+  int sendData=0; //initialized to 'do not send command' value
+
+  if(pillNumber==1){sendData=a;}
+  if(pillNumber==2){sendData=b;}
+  if(pillNumber==3){sendData=c;}
+  if(pillNumber==4){sendData=d;}
+  if(pillNumber==5){sendData=e;}
+  if(pillNumber==6){sendData=f;}
+
+  if(verbose==true){cout<<"Sending "<<sendData<<endl;}
+  if(sendData!=0){
+     serialPutchar (serialdevice, sendData);
+  }
+}
+//=====================
+
+void closeTray(int pillNumber){
+  if(verbose==true){cout<<"Starting Close Tray"<<endl;}  
+
+  int sendData=0; //initialized to 'do not send command' value
+
+  if(pillNumber==1){sendData=g;}
+  if(pillNumber==2){sendData=h;}
+  if(pillNumber==3){sendData=i;}
+  if(pillNumber==4){sendData=j;}
+  if(pillNumber==5){sendData=k;}
+  if(pillNumber==6){sendData=m;}
+
+  if(verbose==true){cout<<"Sending "<<sendData<<endl;}
+  if(sendData!=0){
+     serialPutchar (serialdevice, sendData);
+  }
+}
+//=====================
+
+
+
+//Summon Pet
+void summonPet(int petNumber){
+   if(verbose==true){cout<<"Summoning Pet"<<endl;}
+
+   int summoned=1;   
+ 
+   if(verbose==true){cout<<"Summon Pet Complete"<<endl;}
+
+return summoned; 
+}
+//=======================
+
+int verifyPet(int petNumber){
+  if(verbose==true){cout<<"Starting Verify Pet"<<endl;}
+
+  int verified=1;
+
+  if(verbose==true){cout<<"End Verify Pet"<<endl;}
+
+return verified;
+}
+//====================
+
 
 /*
 
