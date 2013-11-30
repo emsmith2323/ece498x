@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <sstream>
 #include <vector>
+#include <wiringPi.h>
+#include <wiringSerial.h>
 
 #include <Rpmd.hpp>
 
@@ -38,6 +40,41 @@ void handleDBErr(MYSQL *con);
 void sendEmail(int emailType);
 
 int main(int argc,char *argv[]){
+
+
+ printf ("begin\n");
+	int data;
+	int dev;
+  //Open serial device for communication
+  if ((dev=serialOpen ("/dev/ttyAMA0", 9600)) < 0)
+  {
+    fprintf (stderr, "Unable to open serial device: %s\n", strerror (errno)) ;
+    return 1 ;
+  }
+
+  if (wiringPiSetup () == -1)
+  {
+    fprintf (stdout, "Unable to start wiringPi: %s\n", strerror (errno)) ;
+    return 1 ;
+  }
+
+printf ("initialized\n");
+
+int a='a';
+serialPutchar (dev, a);
+
+printf ("char sent\n");
+
+for (;;)
+{   
+	if (serialDataAvail (dev) >0)
+	{
+		data = serialGetchar (dev);
+		printf("%c\n", data );
+		//printf ( "%c", data);
+	}
+}
+
 
   //Process command line arguments
   for(int i=1;i<argc;i++)
