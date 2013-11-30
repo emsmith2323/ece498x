@@ -46,11 +46,12 @@ void handleDBErr(MYSQL *con);
 void sendEmail(int emailType);
 void loadProcedure(int pillNumber);
 void deliveryProcedure(int petNumber, int pillNumber);
-int deliverPill(int petNumber, int pillNumber);
+void deliverPill(int petNumber, int pillNumber);
 int summonPet(int petNumber);
 void openTray(int pillNumber);
 void closeTray(int pillNumber);
 int verifyPet(int petNumber);
+int verifyPill(int pillNumber);
 
 int main(int argc,char *argv[]){
 
@@ -65,7 +66,7 @@ int main(int argc,char *argv[]){
   if(verbose==true){cout<<"Verbose Mode"<<endl;}
 
   //Open serial device for communication
-  if(verbose==true){cout<<"Initializing serial device"<<endl;
+  if(verbose==true){cout<<"Initializing serial device"<<endl;}
   if ((serialDevice=serialOpen ("/dev/ttyAMA0", BAUD)) < 0)
   {
     fprintf (stderr, "Unable to open serial device: %s\n", strerror (errno)) ;
@@ -73,7 +74,7 @@ int main(int argc,char *argv[]){
   }
 
   //Setup wiring pi
-  if(verbose==true){cout<<"Setting up Wiring Pi"<<endl;
+  if(verbose==true){cout<<"Setting up Wiring Pi"<<endl;}
   if (wiringPiSetup () == -1)
   {
     fprintf (stdout, "Unable to start wiringPi: %s\n", strerror (errno)) ;
@@ -103,7 +104,9 @@ int main(int argc,char *argv[]){
      for(int i=0;i<3;i++){
 
         //Check for On Demand requests
-        if(verbose==true){cout<<"Calling checkOnDemand"<<endl;}
+        if(verbose==true){cout<<"Wait 10 Seconds"<<endl;}
+        sleep(10);
+        if(verbose==true){cout<<"Checking On Demand"<<endl;}
         checkOnDemand();
      } //end loop 3x check on demand
 
@@ -240,7 +243,7 @@ vector<UserParam> getUserParams(){
                string tempValue = row[1];
                UserParam tempParam (tempType, tempValue); //create temp vector
                params.push_back(tempParam); //add temp vector to full set
-               if(verbose==true){cout << "Added: "<<tempType<<tempValue<<endl;}
+               if(verbose==true){cout << "Added: "<<tempType<<" "<<tempValue<<endl;}
             }//end while
 
             mysql_free_result(result);
@@ -336,11 +339,11 @@ std::strcpy (message4, msgPart4.c_str());
 //send appropriate email
   if (system(NULL)) //a command processor is available
   { 
-	if (emailType==0){system (message0);}
-	if (emailType==1){system (message1);}
-	if (emailType==2){system (message2);}
-	if (emailType==3){system (message3);}
-      if (emailType==4){system (message4);}
+     if (emailType==0){system (message0);}
+     if (emailType==1){system (message1);}
+     if (emailType==2){system (message2);}
+     if (emailType==3){system (message3);}
+     if (emailType==4){system (message4);}
   }
   //future work:consider lighting error led if no command proc avail
 
@@ -353,12 +356,12 @@ if(verbose==true){cout<<"Send Email Complete"<<endl;}
 void loadProcedure(int pillNumber){
    if(verbose==true){cout<<"Starting Load Procedure"<<endl;}
 
-   openTray(int pillNumber);
+   openTray(pillNumber);
    
    if(verbose==true){cout<<"Waiting for pill to be loaded"<<endl;}
    sleep(LOADWAIT); //wait ## seconds for user to load pill
 
-   closeTray(int pillNumber);
+   closeTray(pillNumber);
 
    //If pill not detected after load cycle, inform user via email
    if(verifyPill(pillNumber)==0){sendEmail(4);}
@@ -372,18 +375,15 @@ void loadProcedure(int pillNumber){
 void deliveryProcedure(int petNumber, int pillNumber){
    if(verbose==true){cout<<"Starting Delivery Procedure"<<endl;}
    
-   for(int i=0;i<2;i++){
-      if(verifyPill(pillNumber)==0){ //Pill not present
-         sendEmail(2); //inform user no pill present
-         break; //end for loop
-      }else{ //Pill is present, begin delivery
-         if(summonPet(petNumber)==1){ //Pet is present
-            deliverPill(petNumber, pillNumber); //deliver pill informs user of status
-         }else{//Pet is not present
-            sendEmail(1); //Pet did not come when called
-          }//end pet not present else
-       }//end pill is present else 
-   }//end for loop
+   if(verifyPill(pillNumber)==0){ //Pill not present
+       sendEmail(2); //inform user no pill present
+   }else{ //Pill is present, begin delivery
+       if(summonPet(petNumber)==1){ //Pet is present
+          deliverPill(petNumber, pillNumber); //deliver pill informs user of status
+       }else{//Pet is not present
+          sendEmail(1); //Pet did not come when called
+       }//end pet not present else
+    }//end pill is present else 
  
    if(verbose==true){cout<<"Delivery Procedure Complete"<<endl;}
 
@@ -397,6 +397,7 @@ void deliverPill(int petNumber, int pillNumber){
    openTray(pillNumber);
 
    //wait for PETWAIT x10 seconds pet to leave
+   if(verbose==true){cout<<"Begin Waiting for Pet to Leave"<<endl;}
    for(int i=0; i<PETWAIT; i++){
       sleep(10); //wait 10 seconds
       if(verifyPet(petNumber)==0){break;}//pet left area
@@ -418,22 +419,32 @@ void deliverPill(int petNumber, int pillNumber){
 int verifyPill(int pillNumber){
   if(verbose==true){cout<<"Starting Verify Pill"<<endl;}
  
+  int sendData;
   int dataReceived;  
 
-  serialPutchar (serialdevice, pillNumber);
+  if(pillNumber==1){sendData='1';}
+  if(pillNumber==2){sendData='2';}
+  if(pillNumber==3){sendData='3';}
+  if(pillNumber==4){sendData='4';}
+  if(pillNumber==5){sendData='5';}
+  if(pillNumber==6){sendData='6';}
+ 
+  if(verbose==true){cout<<"Sending Code: "<<(char) sendData<<endl;}
+  serialPutchar (serialDevice, sendData);
   
+  if(verbose==true){cout<<"Waiting for Reply up to 30 seconds"<<endl;}
   for(int i; i<30; i++) //poll for data for 30 seconds max
   {   
-     if (serialDataAvail (seraildevice) >0)  //if data is waiting
+     if (serialDataAvail (serialDevice) >0)  //if data is waiting
 	{
-		dataReceived = serialGetchar (serialdevice);
+		dataReceived = serialGetchar (serialDevice);
             break;
 	}
       sleep(1); //check for new data once per second
   }
   
-  if(verbose==true){cout<<Verification Result<<dataReceived<<endl;}
-  if(dataReceived==y){return 1;}
+  if(verbose==true){cout<<"Verification Result: "<<(char) dataReceived<<endl;}
+  if(dataReceived==121){return 1;} //121 is ascii 'y'
 
 return 0;  //no pill or timeout
 
@@ -446,16 +457,16 @@ void openTray(int pillNumber){
 
   int sendData=0; //initialized to 'do not send command' value
 
-  if(pillNumber==1){sendData=a;}
-  if(pillNumber==2){sendData=b;}
-  if(pillNumber==3){sendData=c;}
-  if(pillNumber==4){sendData=d;}
-  if(pillNumber==5){sendData=e;}
-  if(pillNumber==6){sendData=f;}
+  if(pillNumber==1){sendData='a';}
+  if(pillNumber==2){sendData='b';}
+  if(pillNumber==3){sendData='c';}
+  if(pillNumber==4){sendData='d';}
+  if(pillNumber==5){sendData='e';}
+  if(pillNumber==6){sendData='f';}
 
-  if(verbose==true){cout<<"Sending "<<sendData<<endl;}
+  if(verbose==true){cout<<"Sending "<<(char) sendData<<endl;}
   if(sendData!=0){
-     serialPutchar (serialdevice, sendData);
+     serialPutchar (serialDevice, sendData);
   }
 }
 //=====================
@@ -465,16 +476,16 @@ void closeTray(int pillNumber){
 
   int sendData=0; //initialized to 'do not send command' value
 
-  if(pillNumber==1){sendData=g;}
-  if(pillNumber==2){sendData=h;}
-  if(pillNumber==3){sendData=i;}
-  if(pillNumber==4){sendData=j;}
-  if(pillNumber==5){sendData=k;}
-  if(pillNumber==6){sendData=m;}
+  if(pillNumber==1){sendData='g';}
+  if(pillNumber==2){sendData='h';}
+  if(pillNumber==3){sendData='i';}
+  if(pillNumber==4){sendData='j';}
+  if(pillNumber==5){sendData='k';}
+  if(pillNumber==6){sendData='m';}
 
-  if(verbose==true){cout<<"Sending "<<sendData<<endl;}
+  if(verbose==true){cout<<"Sending "<<(char) sendData<<endl;}
   if(sendData!=0){
-     serialPutchar (serialdevice, sendData);
+     serialPutchar (serialDevice, sendData);
   }
 }
 //=====================
@@ -482,7 +493,7 @@ void closeTray(int pillNumber){
 
 
 //Summon Pet
-void summonPet(int petNumber){
+int summonPet(int petNumber){
    if(verbose==true){cout<<"Summoning Pet"<<endl;}
 
    int summoned=1;   
@@ -497,8 +508,9 @@ int verifyPet(int petNumber){
   if(verbose==true){cout<<"Starting Verify Pet"<<endl;}
 
   int verified=1;
-
-  if(verbose==true){cout<<"End Verify Pet"<<endl;}
+  
+  if(verbose==true&&verified==1){cout<<"End Verify Pet - Pet Detected"<<endl;}
+  if(verbose==true&&verified==0){cout<<"End Verify Pet - Pet Not Detected"<<endl;}
 
 return verified;
 }
