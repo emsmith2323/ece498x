@@ -65,6 +65,7 @@ serialPutchar (dev, a);
 
 printf ("char sent\n");
 
+/*
 for (;;)
 {   
 	if (serialDataAvail (dev) >0)
@@ -74,7 +75,7 @@ for (;;)
 		//printf ( "%c", data);
 	}
 }
-
+*/
 
   //Process command line arguments
   for(int i=1;i<argc;i++)
@@ -155,17 +156,21 @@ void checkOnDemand(){
             MYSQL_ROW row;
             while((row = mysql_fetch_row(result)))
             { 
-                    int tempPillNumber = std::stoi (row[1]);
-                    int tempPetNumber = std::stoi (row[2]);
+                    int tempPillNumber = std::stoi (row[0]);
+                    int tempPetNumber = std::stoi (row[1]);
                     OnDemand tempDemand (tempPillNumber, tempPetNumber); //create temp vector
                     demand.push_back(tempDemand); //add temp vector to full set
+                    if(verbose==true){
+                      cout<<"Added to ondemand vector: "<<tempPillNumber;
+                      cout<<" "<<tempPetNumber<<endl;
+                    }
             } //end while
             
             mysql_free_result(result);
         
 
     	    //Delete all data
-            if(mysql_query(connection, "DELETE * FROM on_demand"))
+            if(mysql_query(connection, "DELETE FROM on_demand"))
             {
               cout <<"ONDEMAND DEL :: ";
               handleDBErr(connection);
@@ -173,12 +178,12 @@ void checkOnDemand(){
             }
 
 //Print and delete on demand vector
-for (unsigned j=demand.size(); j!=0; j--)
+for (int i=demand.size()-1; i!=-1; i--)
  {
    if(verbose==true){
-     cout << "Delete ondemand ROW" << j << "::";
-     cout << "petNumber " << demand[j].petNumber << " ";
-     cout << "pillNumber " <<  demand[j].pillNumber << endl;
+     cout << "Delete ondemand ROW" << i << "::";
+     cout << "petNumber " << demand[i].petNumber << " ";
+     cout << "pillNumber " <<  demand[i].pillNumber << endl;
    }
    demand.pop_back();//delete last element
  }//end for
