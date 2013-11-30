@@ -139,7 +139,7 @@ void checkOnDemand(){
     if(connection != NULL)
     {
         //Retrieve all data from table
-        if(mysql_query(connection, "SELECT * FROM on_demand ORDER BY order DESC"))
+        if(mysql_query(connection, "SELECT * FROM on_demand ORDER BY sort_order DESC"))
         {
             cout <<"ONDEMAND :: ";
             handleDBErr(connection);
