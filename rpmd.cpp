@@ -138,17 +138,34 @@ void checkOnDemand(){
 
     if(connection != NULL)
     {
-        //Retrieve all data
-        if(mysql_query(connection, "SELECT * FROM on_demand"))
+        //Retrieve all data from table
+        if(mysql_query(connection, "SELECT * FROM on_demand ORDER BY order DESC"))
         {
             cout <<"ONDEMAND :: ";
             handleDBErr(connection);
             cout << endl;
         }
 
+	  //Store result
         MYSQL_RES *result = mysql_store_result(connection);
 
-	//If there is data, handle it
+    	  //Delete all data from table
+        if(mysql_query(connection, "DELETE FROM on_demand"))
+        {
+           cout <<"ONDEMAND DEL :: ";
+           handleDBErr(connection);
+           cout << endl;
+         }
+
+    	  //Reset 'order' which is an auto increment field
+        if(mysql_query(connection, "ALTER TABLE on_demand AUTO_INCREMENT=1"))
+        {
+           cout <<"ONDEMAND DEL :: ";
+           handleDBErr(connection);
+           cout << endl;
+         }
+
+	  //If there is data, handle it
         if(result != NULL)
         {
 
@@ -156,8 +173,8 @@ void checkOnDemand(){
             MYSQL_ROW row;
             while((row = mysql_fetch_row(result)))
             { 
-                    int tempPillNumber = std::stoi (row[0]);
-                    int tempPetNumber = std::stoi (row[1]);
+                    int tempPillNumber = std::stoi (row[1]);
+                    int tempPetNumber = std::stoi (row[2]);
                     OnDemand tempDemand (tempPillNumber, tempPetNumber); //create temp vector
                     demand.push_back(tempDemand); //add temp vector to full set
                     if(verbose==true){
@@ -167,17 +184,8 @@ void checkOnDemand(){
             } //end while
             
             mysql_free_result(result);
-        
 
-    	    //Delete all data
-            if(mysql_query(connection, "DELETE FROM on_demand"))
-            {
-              cout <<"ONDEMAND DEL :: ";
-              handleDBErr(connection);
-              cout << endl;
-            }
-
-//Print and delete on demand vector
+//Delete on demand vector
 for (int i=demand.size()-1; i!=-1; i--)
  {
    if(verbose==true){
