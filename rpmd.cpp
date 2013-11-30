@@ -132,7 +132,8 @@ void checkOnDemand(){
   vector<OnDemand> demand; //vector for on demand requests
   if(verbose==true){cout<<"Fetching On Demand"<<endl;}
 
-//  connectToDatabase();
+    //Connect to database if not connected
+    if(connection==NULL){connectToDatabase();}
 
     if(connection != NULL)
     {
@@ -146,59 +147,54 @@ void checkOnDemand(){
 
         MYSQL_RES *result = mysql_store_result(connection);
 
+	//If there is data, handle it
         if(result != NULL)
         {
-            //Get the number of columns
-         //   int num_fields = mysql_num_fields(result);
 
             //Process all the rows in table
             MYSQL_ROW row;
-        //    int i = 0;
             while((row = mysql_fetch_row(result)))
             { 
-        //            i++;
                     int tempPillNumber = std::stoi (row[1]);
                     int tempPetNumber = std::stoi (row[2]);
                     OnDemand tempDemand (tempPillNumber, tempPetNumber); //create temp vector
                     demand.push_back(tempDemand); //add temp vector to full set
-
-
             } //end while
             
             mysql_free_result(result);
+        
 
-
-//Print on demand
-if (verbose==true){
- for (unsigned j=0; j<demand.size(); j++)
- {
-   cout << "ondemand ROW" << j << "::";
-   cout << "petNumber " << demand[j].petNumber << " ";
-   cout << "pillNumber " <<  demand[j].pillNumber << endl ;
- }
-}
-			   
-
-  /* ADDING DELETE ROWS  STOPPED HERE          
-            //delete all rows
-            if(mysql_query(connection, command))
+    	    //Delete all data
+            if(mysql_query(connection, "DELETE * FROM on_demand"))
             {
-              cout <<"DeleteOnDemand :: ";
+              cout <<"ONDEMAND DEL :: ";
               handleDBErr(connection);
               cout << endl;
-             }
-             else
-             {
+            }
 
-              vector<AlarmTime>::iterator it = alarmTimes.begin() + i;
-              alarmTimes.erase(it);
-                        i--;
-              }            
-*/
+//Print and delete on demand vector
+for (unsigned j=demand.size(); j!=0; j--)
+ {
+   if(verbose==true){
+     cout << "Delete ondemand ROW" << j << "::";
+     cout << "petNumber " << demand[j].petNumber << " ";
+     cout << "pillNumber " <<  demand[j].pillNumber << endl;
+   }
+   demand.pop_back();//delete last element
+ }//end for
+			   
         }//end result !=null
    }//end connection !=null
 
-//    disconnectFromDatabase();
+if(verbose==true){
+ cout<<"At end of checkOnDemand vector contains:"<<endl;
+   for (unsigned i=0; i<demand.size(); i++)
+   {
+      cout << "ROW" << i << "::";
+      cout << "petNumber "<<demand[i].petNumber << " ";
+      cout << "pillNumber "<<demand[i].pillNumber << endl ;
+   }
+ }
 
 }
 //======================== 
