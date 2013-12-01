@@ -89,6 +89,17 @@ int main(int argc,char *argv[]){
   //Begin repeated procedure
   for(;;){
 
+    //Establish Date and Time
+    const string dayAbbr[]={"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
+        time_t rawtime;
+        tm * timeinfo;
+        time(&rawtime);
+        timeinfo=localtime(&rawtime);
+    int wDay=timeinfo->tm_wday; //Day of week Sun=0,Sat=7
+    string dayToday=dayAbbr[wDay];
+    if(verbose==true){cout<<"Today is "<<dayToday<<endl;}
+
+
      //Populate User Parameters vector with database values
      if(verbose==true){cout<<"Calling getUserParams"<<endl;}
      userParams = getUserParams();
@@ -107,19 +118,26 @@ int main(int argc,char *argv[]){
      if(verbose==true){cout<<"Calling getPillSchedule"<<endl;}
      pillSchedule = getPillSchedule();
 
-     //Print pill schedule if verbose
-     if(verbose==true){cout<<"Listing Stored Pill Schedule"<<endl;
-       for (unsigned i=0; i<pillSchedule.size(); i++)
-       {
+     //Review Pill Schedule
+     for (unsigned i=0; i<pillSchedule.size(); i++)
+     {
+        if(verbose==true){cout<<"Reviewing Scheduled Items"<<endl;
           cout << "ROW" << i << "::";
           cout << "pillNumber " << pillSchedule[i].pillNumber << " ";
-          cout << "petNumber " <<  PillSchedule[i].petNumber << " ";
+          cout << "petNumber " <<  pillSchedule[i].petNumber << " ";
           cout << "weekDay " << pillSchedule[i].weekDay << " ";
           cout << "deliverTime " << pillSchedule[i].deliverTime << " ";
           cout << "lastDate " << pillSchedule[i].lastDate << endl ;
-       }
-     }
+        }
 
+        //Determine if a scheduled item should run
+        if(wDay==pillSchedule[i].weekDay
+           &&pillSchedule[i].lastDate<20131201
+           //&&deliverTime<CURRENTTIME
+           ){
+            cout"Schedule Should Run Now!!!!!"<<endl;
+            }
+     }
 
      for(int i=0;i<3;i++){
 
@@ -133,8 +151,6 @@ int main(int argc,char *argv[]){
   } //end repeated procedure
   
 
-
-// sendEmail(0);
 
 //Disconnect from SQL database
 disconnectFromDatabase();
@@ -279,7 +295,7 @@ return params;
 //Get Schedule
 
 vector<Schedule> getPillSchedule(){
-  if(verbose==true){cout<<"Beginning Get Pill Schedule"<<endl;
+  if(verbose==true){cout<<"Beginning Get Pill Schedule"<<endl;}
 
   vector<Schedule> pSchedule;
 
@@ -303,9 +319,9 @@ vector<Schedule> getPillSchedule(){
             //Add rows to pill schedule vector
             while((row = mysql_fetch_row(result))){
                int tempPill = std::stoi (row[0]);
-               int tempPet = std::sot (row[1]);
-               string tempDay = row[3];
-               string tempTime = row[4];
+               int tempPet = std::stoi (row[1]);
+               int tempDay = std:stoi (row[2]);
+               string tempTime = row[3];
 
                Schedule tempSchedule (tempPill, tempPet, tempDay, tempTime); //create temp vector
                pSchedule.push_back(tempSchedule); //add temp vector to full set

@@ -8,27 +8,27 @@
 class Schedule{
 
 private:
-	int pType;
-        std::string uValue;
-        int stringToInt(std::string);
+//	std::string weekDayStr;
+//        const int test=1;
+//        std::string str1 ("Sun");
 
 public:
 	int pillNumber;
         int petNumber;
-        std::string weekDay;
+        int weekDay;
         std::string deliverTime;
-        std::string lastDate;
+        long lastDate;
 
 	Schedule(); //default constructor 
-	Schedule(int nTempPill, int nTempPet, std::string nTempDay, std::string nTempTime)
+	Schedule(int nTempPill, int nTempPet, int nTempDay, std::string nTempTime)
              {pillNumber=nTempPill;
               petNumber=nTempPet;
               weekDay=nTempDay;
               deliverTime=nTempTime;
-              lastDate="NOT RUN";
+              lastDate=14920101; //initialize as 'never ran'
               }
 
-        std::string toString();
+  //      char weekDay(){return '1';}
 
 };
 
