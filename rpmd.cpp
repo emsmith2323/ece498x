@@ -103,6 +103,24 @@ int main(int argc,char *argv[]){
        }
      }
 
+     //Populate Pill Schedule vector with database values
+     if(verbose==true){cout<<"Calling getPillSchedule"<<endl;}
+     pillSchedule = getPillSchedule();
+
+     //Print pill schedule if verbose
+     if(verbose==true){cout<<"Listing Stored Pill Schedule"<<endl;
+       for (unsigned i=0; i<pillSchedule.size(); i++)
+       {
+          cout << "ROW" << i << "::";
+          cout << "pillNumber " << pillSchedule[i].pillNumber << " ";
+          cout << "petNumber " <<  PillSchedule[i].petNumber << " ";
+          cout << "weekDay " << pillSchedule[i].weekDay << " ";
+          cout << "deliverTime " << pillSchedule[i].deliverTime << " ";
+          cout << "lastDate " << pillSchedule[i].lastDate << endl ;
+       }
+     }
+
+
      for(int i=0;i<3;i++){
 
         //Check for On Demand requests
@@ -263,6 +281,8 @@ return params;
 vector<Schedule> getPillSchedule(){
   if(verbose==true){cout<<"Beginning Get Pill Schedule"<<endl;
 
+  vector<Schedule> pSchedule;
+
  // connectToDatabase();
 
     if(connection != NULL){
@@ -288,7 +308,7 @@ vector<Schedule> getPillSchedule(){
                string tempTime = row[4];
 
                Schedule tempSchedule (tempPill, tempPet, tempDay, tempTime); //create temp vector
-               pillSchedule.push_back(tempSchedule); //add temp vector to full set
+               pSchedule.push_back(tempSchedule); //add temp vector to full set
                if(verbose==true){cout << "Added: "<<tempPill<<" "<<tempPet;
                   cout<<" "<<tempDay<<" "<<tempTime<<endl;}
             }//end while
@@ -299,7 +319,7 @@ vector<Schedule> getPillSchedule(){
 
 if(verbose==true){cout<<"End User Param"<<endl;}
        
-return params;
+return pSchedule;
 }
 //============================
 

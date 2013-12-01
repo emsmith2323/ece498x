@@ -19,10 +19,10 @@ public:
         std::string deliverTime;
         std::string lastDate;
 
-	UserParam(); //default constructor 
-	UserParam(int nTempPill, int nTempPet, std::string nTempDay, std::string nTempTime)
+	Schedule(); //default constructor 
+	Schedule(int nTempPill, int nTempPet, std::string nTempDay, std::string nTempTime)
              {pillNumber=nTempPill;
-              petNumber=nPetNumber;
+              petNumber=nTempPet;
               weekDay=nTempDay;
               deliverTime=nTempTime;
               lastDate="NOT RUN";
