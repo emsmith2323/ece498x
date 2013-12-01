@@ -89,16 +89,26 @@ int main(int argc,char *argv[]){
   //Begin repeated procedure
   for(;;){
 
-    //Establish Date and Time
-    const string dayAbbr[]={"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
-        time_t rawtime;
-        tm * timeinfo;
-        time(&rawtime);
-        timeinfo=localtime(&rawtime);
+    //Establish Current Date and Time
+    time_t rawtime;
+    tm * timeinfo;
+    time(&rawtime);
+    timeinfo=localtime(&rawtime);
     int wDay=timeinfo->tm_wday; //Day of week Sun=0,Sat=7
+    int currentMinute=timeinfo->tm_min;
+    int currentHour=timeinfo->tm_hour;
+    int currentDay=timeinfo->tm_mday;
+    int currentMonth=1+timeinfo->tm_mon;
+    int currentYear=1900+timeinfo->tm_year;
+    int currentTime=(currentHour*100)+currentMinute;
+    long currentDate=(currentYear*10000)+(currentMonth*100)+currentDay;
+    const string dayAbbr[]={"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
     string dayToday=dayAbbr[wDay];
-    if(verbose==true){cout<<"Today is "<<dayToday<<endl;}
-
+    if(verbose==true){cout<<"Today is "<<dayToday<< " ";
+       cout<<currentDate<<endl;
+       cout<<"Time is hhmm "<<currentTime<<endl;
+    }
+    
 
      //Populate User Parameters vector with database values
      if(verbose==true){cout<<"Calling getUserParams"<<endl;}
@@ -115,6 +125,7 @@ int main(int argc,char *argv[]){
      }
 
      //Populate Pill Schedule vector with database values
+     //If there has been a change (user param 0 has value y)
      if(verbose==true){cout<<"Calling getPillSchedule"<<endl;}
      pillSchedule = getPillSchedule();
 
@@ -131,11 +142,14 @@ int main(int argc,char *argv[]){
         }
 
         //Determine if a scheduled item should run
-        if(wDay==pillSchedule[i].weekDay
-           &&pillSchedule[i].lastDate<20131201
-           //&&deliverTime<CURRENTTIME
-           ){
-            cout"Schedule Should Run Now!!!!!"<<endl;
+        if(wDay==pillSchedule[i].weekDay //Check day of week
+           &&pillSchedule[i].lastDate<currentDate//Confirm not delivered today
+           &&pillSchedule[i].deliverTime==currentTime)//Check time
+           {
+            //Run Schedule
+            if(verbose==true){cout<<"Running Schedule  Now!!!!!"<<endl;}
+            pillSchedule[i].lastDate=currentDate;
+            deliveryProcedure(pillSchedule[i].petNumber,pillSchedule[i].pillNumber);
             }
      }
 
@@ -320,9 +334,11 @@ vector<Schedule> getPillSchedule(){
             while((row = mysql_fetch_row(result))){
                int tempPill = std::stoi (row[0]);
                int tempPet = std::stoi (row[1]);
-               int tempDay = std:stoi (row[2]);
-               string tempTime = row[3];
-
+               int tempDay = std::stoi (row[2]);
+               string strTime = row[3];
+               int tempHour = std::stoi (strTime.substr(0,2));
+               int tempMinute = std::stoi (strTime.substr(3,2));
+               int tempTime = (tempHour*100)+tempMinute;
                Schedule tempSchedule (tempPill, tempPet, tempDay, tempTime); //create temp vector
                pSchedule.push_back(tempSchedule); //add temp vector to full set
                if(verbose==true){cout << "Added: "<<tempPill<<" "<<tempPet;
@@ -600,65 +616,3 @@ return verified;
 //====================
 
 
-/*
-
-vector<Schedule> getSchedule(){
-    vector<Schedule> sched;   //a vector of the scheduled times
-
-    if(connection != NULL){
-        //Retrieve all data from alarm_times
-        if(mysql_query(connection, "SELECT * FROM alarm_times")){
-            cout <<"getAlarmTimes 1 :: ";
-            handleDBErr(connection);
-            cout << endl;
-        }
-        
-        MYSQL_RES *result = mysql_store_result(connection);
-        
-        if(result != NULL){
-            //Get the number of columns
-            int num_fields = mysql_num_fields(result);
-            
-            //Get all the alarms, and add them to the list
-            MYSQL_ROW row;
-            int i = 0;
-            while((row = mysql_fetch_row(result))){
-                if(num_fields == 4){
-                    string date = row[0], time = row[1], repeat = row[2],
-                           audioFile = row[3];
-                    AlarmTime tempTime (date, time, audioFile);
-                    times.push_back(tempTime);
-                    //cout << "Added: " << tempTime.toString() << endl;
-                    i++;
-                }else{
-                    cout << "MySQL: Wrong number of columns." << endl;
-                }
-            }
-            
-            mysql_free_result(result);
-            
-            //If the number of alarms has changed, print it out
-            if(times.size() != numAlarms){
-                cout << "**********************************" << endl;
-                cout << "Alarms" << endl;
-                cout << "**********************************" << endl;
-                for(long unsigned i = 0; i < times.size(); i++){
-                    cout << times[i].toString() << endl;
-                }
-                if(times.size() == 0){
-                    cout << "No alarms!" << endl;
-                }
-                cout << "**********************************" << endl << endl;
-            }
-            numAlarms = times.size();
-            return times;
-        }else{
-            cout <<"getAlarmTimes 2 :: ";
-            handleDBErr(connection);
-            cout << endl;
-        }
-    }
-    
-    return times;
-}//===========================
-*/

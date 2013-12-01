@@ -16,11 +16,11 @@ public:
 	int pillNumber;
         int petNumber;
         int weekDay;
-        std::string deliverTime;
+        int deliverTime;
         long lastDate;
 
 	Schedule(); //default constructor 
-	Schedule(int nTempPill, int nTempPet, int nTempDay, std::string nTempTime)
+	Schedule(int nTempPill, int nTempPet, int nTempDay, int nTempTime)
              {pillNumber=nTempPill;
               petNumber=nTempPet;
               weekDay=nTempDay;
