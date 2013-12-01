@@ -31,6 +31,7 @@ using namespace std;
 //Global Variables
 bool verbose=false;
 vector<UserParam> userParams;
+vector<Schedule> pillSchedule;
 int serialDevice; //serial device
 
 
@@ -39,6 +40,7 @@ MYSQL *connection;
 
 //Function Declarations
 vector<UserParam> getUserParams();
+vector<Schedule> getPillSchedule();
 void checkOnDemand();
 void connectToDatabase();
 void disconnectFromDatabase();
@@ -244,6 +246,51 @@ vector<UserParam> getUserParams(){
                UserParam tempParam (tempType, tempValue); //create temp vector
                params.push_back(tempParam); //add temp vector to full set
                if(verbose==true){cout << "Added: "<<tempType<<" "<<tempValue<<endl;}
+            }//end while
+
+            mysql_free_result(result);
+         }//end if result!=null
+      }//end if connection!=null   
+
+if(verbose==true){cout<<"End User Param"<<endl;}
+       
+return params;
+}
+//============================
+
+//Get Schedule
+
+vector<Schedule> getPillSchedule(){
+  if(verbose==true){cout<<"Beginning Get Pill Schedule"<<endl;
+
+ // connectToDatabase();
+
+    if(connection != NULL){
+        //Retrieve all data
+        if(mysql_query(connection, "SELECT * FROM pill_schedule")){
+            cout <<"SCHEDULE :: ";
+            handleDBErr(connection);
+            cout << endl;
+        }
+
+        MYSQL_RES *result = mysql_store_result(connection);
+
+        if(result != NULL){
+  
+            //Get all the rows in table
+            MYSQL_ROW row;
+
+            //Add rows to pill schedule vector
+            while((row = mysql_fetch_row(result))){
+               int tempPill = std::stoi (row[0]);
+               int tempPet = std::sot (row[1]);
+               string tempDay = row[3];
+               string tempTime = row[4];
+
+               Schedule tempSchedule (tempPill, tempPet, tempDay, tempTime); //create temp vector
+               pillSchedule.push_back(tempSchedule); //add temp vector to full set
+               if(verbose==true){cout << "Added: "<<tempPill<<" "<<tempPet;
+                  cout<<" "<<tempDay<<" "<<tempTime<<endl;}
             }//end while
 
             mysql_free_result(result);

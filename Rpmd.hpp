@@ -4,6 +4,35 @@
 #include <ctime>
 #include <string>
 
+
+class Schedule{
+
+private:
+	int pType;
+        std::string uValue;
+        int stringToInt(std::string);
+
+public:
+	int pillNumber;
+        int petNumber;
+        std::string weekDay;
+        std::string deliverTime;
+        std::string lastDate;
+
+	UserParam(); //default constructor 
+	UserParam(int nTempPill, int nTempPet, std::string nTempDay, std::string nTempTime)
+             {pillNumber=nTempPill;
+              petNumber=nPetNumber;
+              weekDay=nTempDay;
+              deliverTime=nTempTime;
+              lastDate="NOT RUN";
+              }
+
+        std::string toString();
+
+};
+
+
 class UserParam{
 
 private:
