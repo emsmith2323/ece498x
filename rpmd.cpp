@@ -12,33 +12,62 @@
 #include <vector>
 #include <wiringPi.h>
 #include <wiringSerial.h>
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/opencv.hpp"
 
 #include <Rpmd.hpp>
 
 using namespace std;
+using namespace cv;
 
 //Preprocessor Definitions
+
+//// MySQL Configuration ////
 #define SERVER "localhost"
 #define USER "root"
 #define PASSWORD "raspberry"
 #define DATABASE "rpmd"
+
+//// RPMD Options ////
 #define LOADWAIT 5 //time to wait for user during load
 #define PETWAIT 6 //Value x10 is seconds to wait for 
                   //pet to eat pill and leave before tray close
+
+//// Pet Color Assignments ////
+#define PET1HUE = 52 //52 is green collar
+#define PET2HUE = 222 //222 is pink collar
+
+//// Serial Connection Configuration ////
 #define BAUD 9600 //baud rate for serial device
+
+///// OPENCV DEFINITIONS /////
+#define DELAY_MS    200
+#define MAX_THRESH  255
+#define nodog 0
+#define yesdog 1
+
+///// OPENCV COLORS /////
+#define HUE_GREEN   60
+#define HUE_PINK    220
+#define HUE_BLUE    160
+#define HUE_RED     7
+#define HUE_PURPLE  180
 
 
 //Global Variables
+
+int serialDevice; //serial device
+MYSQL *connection; //MySQL connection
 bool verbose=false;
+bool forceVerify1=false;
+bool forceVerify2=false;
 vector<UserParam> userParams;
 vector<Schedule> pillSchedule;
-int serialDevice; //serial device
 
-
-//MYSQL pointer to MYSQL connection
-MYSQL *connection;
 
 //Function Declarations
+
 vector<UserParam> getUserParams();
 vector<Schedule> getPillSchedule();
 void checkOnDemand();
@@ -54,6 +83,13 @@ void openTray(int pillNumber);
 void closeTray(int pillNumber);
 int verifyPet(int petNumber);
 int verifyPill(int pillNumber);
+//// OPENCV FUNCTIONS ////
+int FindDog(int hue, VideoCapture video);
+void FindColor(Mat& notprocessed, Mat& processed, int color);
+int CountActivePixels(Mat& processed);
+
+
+
 
 int main(int argc,char *argv[]){
 
@@ -62,6 +98,12 @@ int main(int argc,char *argv[]){
   {
     //Use 'v' command line argument for verbose mode
     if(strcmp(argv[i],"v")==0){verbose=true;}
+
+    //Use '1' command line argument to force Pet 1 verified to YES
+    if(strcmp(argv[i],"1")==0){forceVerify1=true;}
+
+    //Use '2' command line argument to force Pet 2 verified to YES
+    if(strcmp(argv[i],"2")==0){forceVerify2=true;}
   }
 
   //List enabled command line options if verbose
@@ -606,13 +648,127 @@ return summoned;
 int verifyPet(int petNumber){
   if(verbose==true){cout<<"Starting Verify Pet"<<endl;}
 
-  int verified=1;
-  
-  if(verbose==true&&verified==1){cout<<"End Verify Pet - Pet Detected"<<endl;}
-  if(verbose==true&&verified==0){cout<<"End Verify Pet - Pet Not Detected"<<endl;}
+  int color;
+  int answer=nodog;
+  int i=0;
 
-return verified;
+  if(petNumber==1){color=PET1HUE};
+  if(petNumber==2){color=PET2HUE};
+
+  VideoCapture video(0);
+
+  if(forceVerify1==true&&petNumber==1){answer==yesdog;}
+  if(forceVerify2==true&&petNumber==2){answer==yesdog;}
+
+  while(answer==nodog&&i<100)
+  {
+    i++;
+    answer=FindDog(color, video);
+  }
+
+  if(verbose==true&&answer==yesdog){cout<<"End Verify Pet - Pet Detected"<<endl;}
+  if(verbose==true&&answer==nodog){cout<<"End Verify Pet - Pet Not Detected"<<endl;}
+
+return answer;
 }
 //====================
 
 
+int FindDog(int color, VideoCapture video)
+{
+    int pixels;
+    int answer=nodog;
+    Size_<int> windowsize; // variable of type size that is a data structure
+
+
+
+    // Get the dimensions of the camera stream in pixels
+    windowsize.width = video.get(CV_CAP_PROP_FRAME_WIDTH);
+    windowsize.height = video.get(CV_CAP_PROP_FRAME_HEIGHT);
+
+
+    // Create Matrix data type with a size of
+    //  'windowsize', 8-bit colors, and 3 colors per pixel
+    Mat notprocessed(windowsize, CV_8UC3);
+
+    // Create Matrix to perform processing with
+    Mat processed (windowsize, CV_8UC3);
+
+    video.read(notprocessed);
+    //imshow("Not Processed",notprocessed); used to show window
+
+    FindColor(notprocessed, processed, color);
+
+    pixels=CountActivePixels(processed);
+
+    if (pixels >= 0.05*processed.cols*processed.rows)
+    {
+        answer=yesdog;
+    }
+    else
+    {
+      answer=nodog;
+    }
+
+    //imshow("Processed", processed);  used to show window
+    //waitKey(DELAY_MS);
+
+    return answer;
+}
+
+
+void FindColor(Mat& notprocessed, Mat& processed, int color)
+{
+    Mat convertbw;
+
+    int colormax = color+10;
+    int colormin = color-10;
+
+    cvtColor(notprocessed,processed,CV_BGR2HLS_FULL);
+
+    // Choose threshold boundry pixels
+    Scalar pixelmin(colormin, 20, 45);    // Saturation Range: 0->255
+    Scalar pixelmax(colormax, 230, 255);  // Lightness Range: 0->255
+
+    inRange(processed, pixelmin, pixelmax, convertbw);
+
+    vector<vector<Point> > listofshapes;
+
+    findContours(convertbw, listofshapes, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
+
+    processed = Mat::zeros(notprocessed.size(), notprocessed.type());
+
+    drawContours(processed, listofshapes, -1, Scalar::all(255), CV_FILLED);
+
+    processed &= notprocessed;
+}
+
+int CountActivePixels(Mat& processed)
+{
+    Mat grayimage;
+    int pixelCount = 0;
+    int pixelValue;
+
+    // Fixed threshold for the color black in a grayscale image, 0 black, 255 white
+    int threshold = 10;
+
+    // Convert Image to grayscale
+    cvtColor(processed,grayimage,CV_BGR2GRAY);
+
+    // Loop through every pixel in the image
+    for( int y = 0; y < grayimage.rows; y++ )
+    {
+        for( int x = 0; x < grayimage.cols; x++ )
+        {
+            // Get the value of the individual gray pixel, 0->255
+            pixelValue = grayimage.data[grayimage.channels()*(grayimage.cols*y + x) + 0];
+
+            // If pixel value is above threshold, then pixel is NOT black
+            if(pixelValue > threshold)
+            {
+                pixelCount++;
+            }
+        }
+    }
+    return pixelCount;
+}

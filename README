@@ -1,1 +1,43 @@
-This repository contains source code used in ece 498x
+This repository contains source code used in the RPMD
+
+This program is intended to run on the Raspberry Pi w/ Debian Linux
+
+Requires packages:
+wiringPi
+openCV (plus various supporting libraries)
+MySQL
+exim4 MTA (configured to send mail, receive is optional)
+
+Timezone should be set as part of users linux profile
+
+Compile using:
+make
+
+Run using:
+sudo ./rpmd
+
+Runtime options:
+v - verbose mode
+1 - force pet 1 detected to true
+2 - force pet 2 detected to true
+
+
+SQL Rows
+------------
+User Parameters:
+Parameter 0 - indicates change to schedule table (values are 'y' or 'n')
+Parameter 1 - contains email address
+
+On Demand
+Pill 0 - Used for load procedure
+
+
+Future Work
+-------------
+-Add led to light on any error
+-Streamline database access such that only 1 table is accessed during repeated procedure (i.e. only check on demand if change, or add user values to on demand table).  Could consider adding a notification from php to c++.
+-Add user parameter for time zone
+-Update to remove requirement that program runs as root (wiringpi constraint)
+-Add logic to allow more than one pill to be scheduled at the same time or very close to one another.  This would require adjusting the date/time check to determine if the scheduled time was within ## minutes (perhaps 5).  To do this requires considering if it is just past the hour, just past midnight (so the date has changed), just past the month, or just past the year and what affect this has on year, month, hour, and minute.
+-Update email message procedure to use an array of messages where the email number corresponds to the array element
+-Develop more elegant method for identifying device on network/adding device to network
