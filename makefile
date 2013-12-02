@@ -6,9 +6,9 @@ LFLAGS = -Wall $(DEBUG)
 #rpmd variables
 OBJS = rpmd.o
 TARGET_1 = rpmd
-LIBS_1 = `mysql_config --libs` -lwiringPi
-COMP_1 = g++ -std=c++0x #-std=c++0x required by std::sot
-CFLAGS_1 = -I. -Wall -c $(DEBUG) `mysql_config --cflags`
+LIBS_1 = `pkg-config --cflags --libs opencv` `mysql_config --libs` -lwiringPi
+COMP_1 = g++ -std=c++0x #-std=c++0x required by std::stoi
+CFLAGS_1 = -I. -Wall -c $(DEBUG) `pkg-config --cflags opencv` `mysql_config --cflags`
 
 
 .PHONY: all

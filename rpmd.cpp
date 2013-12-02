@@ -35,8 +35,8 @@ using namespace cv;
                   //pet to eat pill and leave before tray close
 
 //// Pet Color Assignments ////
-#define PET1HUE = 52 //52 is green collar
-#define PET2HUE = 222 //222 is pink collar
+#define PET1HUE 52 //52 is green collar
+#define PET2HUE 222 //222 is pink collar
 
 //// Serial Connection Configuration ////
 #define BAUD 9600 //baud rate for serial device
@@ -62,6 +62,7 @@ MYSQL *connection; //MySQL connection
 bool verbose=false;
 bool forceVerify1=false;
 bool forceVerify2=false;
+bool forcePillPresent=false;
 vector<UserParam> userParams;
 vector<Schedule> pillSchedule;
 
@@ -104,10 +105,16 @@ int main(int argc,char *argv[]){
 
     //Use '2' command line argument to force Pet 2 verified to YES
     if(strcmp(argv[i],"2")==0){forceVerify2=true;}
+
+   //Use 'p' command line argument to force 'verify pill' to true
+   if(strcmp(argv[i],"p")==0){forcePillPresent=true;}
   }
 
   //List enabled command line options if verbose
   if(verbose==true){cout<<"Verbose Mode"<<endl;}
+  if(forceVerify1==true&&verbose==true){cout<<"Force Verify Pet 1 Enabled"<<endl;}
+  if(forceVerify2==true&&verbose==true){cout<<"Force Verify Pet 2 Enabled"<<endl;}
+  if(forcePillPresent==true&&verbose==true){cout<<"Force Pill Detected Enabled"<<endl;}
 
   //Open serial device for communication
   if(verbose==true){cout<<"Initializing serial device"<<endl;}
@@ -557,9 +564,15 @@ void deliverPill(int petNumber, int pillNumber){
 }
 //=======================
 
+//Verify Pill
 int verifyPill(int pillNumber){
   if(verbose==true){cout<<"Starting Verify Pill"<<endl;}
- 
+
+  if(forcePillPresent==true){
+     if(verbose==true){cout<<"Verification Complete (forced pill present)"<<endl;}
+     return 1;
+  }
+
   int sendData;
   int dataReceived;  
 
@@ -584,7 +597,7 @@ int verifyPill(int pillNumber){
       sleep(1); //check for new data once per second
   }
   
-  if(verbose==true){cout<<"Verification Result: "<<(char) dataReceived<<endl;}
+  if(verbose==true){cout<<"Verification Complete Received from Serial: "<<(char) dataReceived<<endl;}
   if(dataReceived==121){return 1;} //121 is ascii 'y'
 
 return 0;  //no pill or timeout
@@ -645,6 +658,9 @@ return summoned;
 }
 //=======================
 
+
+
+//Verify Pet is Present
 int verifyPet(int petNumber){
   if(verbose==true){cout<<"Starting Verify Pet"<<endl;}
 
@@ -652,13 +668,55 @@ int verifyPet(int petNumber){
   int answer=nodog;
   int i=0;
 
-  if(petNumber==1){color=PET1HUE};
-  if(petNumber==2){color=PET2HUE};
+  if(petNumber==1){color=PET1HUE;}
+  if(petNumber==2){color=PET2HUE;}
+
+  if((forceVerify1==true&&petNumber==1)||(forceVerify2==true&&petNumber==2)){
+     answer=yesdog;}
 
   VideoCapture video(0);
+/*
+  //give the camera 40 frames attempt to get the camera object, 
+  //if it fails after X (40) attemts the app will terminatet, 
+  //till then it will display 'Accessing camera' note;
 
-  if(forceVerify1==true&&petNumber==1){answer==yesdog;}
-  if(forceVerify2==true&&petNumber==2){answer==yesdog;}
+  int j = 40;
+  while (true) {
+
+      Mat videoFrame;
+      video >> videoFrame;
+      if ( videoFrame.total() > 0 ) {
+
+         if(verbose==true){cout<<"Calling Find Dog"<<endl;}
+         while(answer==nodog&&i<100)
+            {
+               i++;
+               answer=FindDog(color, video);
+            }//end while no dog
+
+         if(verbose==true&&answer==yesdog){cout<<"End Verify Pet - Pet Detected"<<endl;}
+         if(verbose==true&&answer==nodog){cout<<"End Verify Pet - Pet Not Detected"<<endl;}
+
+         return answer;
+        //  Mat displayFrame( cameraFrame.size(), CV_8UC3 );
+        //  doSomething( cameraFrame, displayFrame );
+       //   imshow("Image", displayFrame );
+      }//endif 
+      else {
+          if(verbose==true){cout<<"::: Initializing Camera ::: "<<j<< endl;}
+          if ( j > 0 ){ j--;}
+          else{ break;}
+      }//end else
+
+      int key = waitKey(200);
+      if(verbose==true){cout<<"Key 27 for fail"<<key<<endl;}
+      if (key == 27) break;
+
+  }//end while(true)
+*/
+
+  if((forceVerify1==true&&petNumber==1)||(forceVerify2==true&&petNumber==2)){
+     answer=yesdog;}
 
   while(answer==nodog&&i<100)
   {
