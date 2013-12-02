@@ -9,6 +9,7 @@ MySQL
 exim4 MTA (configured to send mail, receive is optional)
 
 Timezone should be set as part of users linux profile
+Serial console must be disabled (sudo rpi-serial-console disable)
 
 Compile using:
 make
